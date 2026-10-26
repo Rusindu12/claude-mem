@@ -122,16 +122,55 @@ jobs:
       # Non-blocking: this job exists to deliver an installable APK even when a
       # formatting assertion fails. Fix real failures — don't ignore them.
       - name: Unit tests (non-blocking)
+        id: unit_tests
         continue-on-error: true
         working-directory: rs-ai-trader/android-app
-        run: ./gradlew :app:testDebugUnitTest --console=plain
+        run: |
+          set -o pipefail
+          ./gradlew :app:testDebugUnitTest --console=plain 2>&1 | tee /tmp/gradle-test.log
 
-      - name: Build debug APK
+      - name: Report unit-test errors
+        if: steps.unit_tests.outcome == 'failure'
         working-directory: rs-ai-trader/android-app
         run: |
+          COUNT=0
+          while IFS= read -r line; do
+            COUNT=$((COUNT+1)); [ "$COUNT" -gt 8 ] && break
+            echo "::warning title=Unit tests::$line"
+          done < <(grep -E "^e: |error:|What went wrong|FAILED|AssertionError|expected:" /tmp/gradle-test.log | head -8)
+          exit 0
+
+      - name: Build debug APK
+        id: build
+        working-directory: rs-ai-trader/android-app
+        run: |
+          set -o pipefail
           ./gradlew :app:assembleDebug \
             -PrsaiBaseUrl="${{ github.event.inputs.base_url || 'http://10.0.2.2:8000/' }}" \
-            --console=plain
+            --console=plain --stacktrace 2>&1 | tee /tmp/gradle-build.log
+
+      # Gradle logs are not always visible from an API client, so compiler
+      # diagnostics are re-emitted as annotations (that is how they surface in
+      # the run summary and in `gh api .../check-runs/<id>/annotations`).
+      - name: Report compiler errors
+        if: failure()
+        working-directory: rs-ai-trader/android-app
+        run: |
+          LOG=/tmp/gradle-build.log
+          [ -f "$LOG" ] || { echo "::error::No gradle log captured"; exit 1; }
+          echo "### Compiler diagnostics" >> "$GITHUB_STEP_SUMMARY"
+          COUNT=0
+          while IFS= read -r line; do
+            COUNT=$((COUNT+1))
+            [ "$COUNT" -gt 12 ] && break
+            echo "::error title=Kotlin/AGP::$line"
+            echo "- \`$line\`" >> "$GITHUB_STEP_SUMMARY"
+          done < <(grep -E "^e: |^w: .*error|error:|What went wrong|FAILURE:|Could not (resolve|find|create|determine)" "$LOG" | head -12)
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::Gradle failed without a recognised error line — see the run log"
+            tail -40 "$LOG" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
