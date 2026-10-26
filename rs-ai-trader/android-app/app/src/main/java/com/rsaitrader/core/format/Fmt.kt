@@ -78,12 +78,17 @@ object Fmt {
         return dec.stripTrailingZeros().toPlainString()
     }
 
+    /** Same as [amount] for raw doubles coming from JSON (never scientific notation). */
+    fun amount(value: Double?): String =
+        value?.let { amount(BigDecimal.valueOf(it).toPlainString()) } ?: "—" 
+
     fun usdt(value: String?): String {
         val dec = value?.toBigDecimalOrNull() ?: return "—"
         return "$" + dec.setScale(2, RoundingMode.HALF_UP).toPlainString()
     }
 
-    fun usdt(value: Double): String = usdt(BigDecimal.valueOf(value).toPlainString())
+    fun usdt(value: Double?): String =
+        value?.let { usdt(BigDecimal.valueOf(it).toPlainString()) } ?: "—" 
 
     fun usdtSigned(value: String?): String {
         val dec = value?.toBigDecimalOrNull() ?: return "—"
