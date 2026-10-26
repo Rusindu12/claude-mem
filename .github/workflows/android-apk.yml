@@ -47,24 +47,44 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Set up Gradle (creates/uses the wrapper)
+      - name: Set up Gradle (provides the wrapper generator + build cache)
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
           cache-read-only: false
 
-      - name: Accept SDK licences and install platform 35
+      # The GitHub-hosted runner images already ship the Android SDK; this step
+      # only pins it in the environment and installs the exact platform we compile
+      # against. Using the preinstalled SDK avoids a third-party setup action.
+      - name: Configure Android SDK
         run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" >/dev/null
+          set -euo pipefail
+          SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          if [ ! -d "$SDK" ]; then
+            echo "::error::No Android SDK found at $SDK"; exit 1
+          fi
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+
+          SDKMANAGER="$(find "$SDK" -type f -name sdkmanager 2>/dev/null | head -1 || true)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "::error::sdkmanager not found inside $SDK"; ls -la "$SDK"; exit 1
+          fi
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK/build-tools/35.0.0" >> "$GITHUB_PATH"
+
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" --install "platform-tools" "platforms;android-35" "build-tools;35.0.0" 2>&1 | tail -5
+
+          echo "sdk.dir=$SDK" > android-app/local.properties   # local only, git-ignored
+          java -version
 
       - name: Generate the Gradle wrapper
         working-directory: android-app
