@@ -74,7 +74,12 @@ object ServiceLocator {
         credentials = CredentialRepository(api)
         notifications = NotificationRepository(api)
         admin = AdminRepository(api)
-        feed = MarketFeed(PriceStream(apiClient.websocketBaseUrl) { apiClient.tokenStore.accessToken() })
+        feed = MarketFeed(
+            PriceStream(
+                baseUrl = apiClient.websocketBaseUrl,
+                tokenProvider = { apiClient.tokenStore.accessToken() },
+            ),
+        )
         favorites = FavoritesStore(context.applicationContext)
     }
 

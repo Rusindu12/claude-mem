@@ -114,12 +114,8 @@ class MarketRepository(private val api: ApiService) {
     suspend fun depth(symbol: String, limit: Int = 15): ApiResult<DepthDto> = safeCall { api.depth(symbol, limit) }
     suspend fun trades(symbol: String): ApiResult<List<TradeTickDto>> = safeCall { api.recentTrades(symbol) }
     suspend fun pairs(): ApiResult<PairsResponse> = safeCall { api.pairs() }
-    suspend fun health(): ApiResult<MarketHealthDto> = safeCall { api.config() }.let { result ->
-        when (result) {
-            is ApiResult.Success -> ApiResult.Success(result.data.marketData)
-            is ApiResult.Failure -> result
-        }
-    }
+    suspend fun health(): ApiResult<MarketHealthDto> =
+        safeCall { api.appConfig() }.map { it.marketData }
 }
 
 class SignalRepository(private val api: ApiService) {
