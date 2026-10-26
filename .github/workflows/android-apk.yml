@@ -58,33 +58,60 @@ jobs:
           gradle-version: "8.9"
           cache-read-only: false
 
-      # The GitHub-hosted runner images already ship the Android SDK; this step
-      # only pins it in the environment and installs the exact platform we compile
-      # against. Using the preinstalled SDK avoids a third-party setup action.
+      # Works with either the preinstalled SDK on the runner image or a fresh
+      # download of the command-line tools, so the job does not depend on a
+      # third-party setup action being healthy.
+      - name: Diagnose runner
+        run: |
+          echo "::notice::ANDROID_HOME=${ANDROID_HOME:-unset} ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-unset}"
+          for d in /usr/local/lib/android/sdk "$ANDROID_HOME" "$ANDROID_SDK_ROOT" "$HOME/android-sdk"; do
+            if [ -n "$d" ] && [ -d "$d" ]; then
+              echo "::notice::SDK candidate '$d' -> $(ls -1 "$d" 2>/dev/null | tr '\n' ' ')"
+            fi
+          done
+          which java && java -version 2>&1 | head -2
+          which gradle && gradle --version | head -5 || true
+
       - name: Configure Android SDK
         run: |
           set -euo pipefail
-          SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
-          if [ ! -d "$SDK" ]; then
-            echo "::error::No Android SDK found at $SDK"; exit 1
-          fi
-          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
-          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
-
+          SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/android-sdk}}"
+          mkdir -p "$SDK"
           SDKMANAGER="$(find "$SDK" -type f -name sdkmanager 2>/dev/null | head -1 || true)"
           if [ -z "$SDKMANAGER" ]; then
-            echo "::error::sdkmanager not found inside $SDK"; ls -la "$SDK"; exit 1
+            echo "::notice::sdkmanager missing under $SDK — downloading command-line tools"
+            URL=""
+            for build in 11076708 9477386; do
+              candidate="https://dl.google.com/android/repository/commandlinetools-linux-${build}_latest.zip"
+              if curl -fsSLI --max-time 60 "$candidate" >/dev/null 2>&1; then URL="$candidate"; break; fi
+            done
+            if [ -z "$URL" ]; then
+              echo "::error::Could not download Android command-line tools"; exit 1
+            fi
+            echo "::notice::Downloading $URL"
+            curl -fsSL --retry 3 -o /tmp/cmdline-tools.zip "$URL"
+            rm -rf "$SDK/cmdline-tools"
+            mkdir -p "$SDK/cmdline-tools"
+            unzip -q /tmp/cmdline-tools.zip -d "$SDK/cmdline-tools"
+            mv "$SDK/cmdline-tools/cmdline-tools" "$SDK/cmdline-tools/latest"
+            SDKMANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
           fi
-          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          chmod +x "$SDKMANAGER"
+
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
           echo "$SDK/platform-tools" >> "$GITHUB_PATH"
           echo "$SDK/build-tools/35.0.0" >> "$GITHUB_PATH"
 
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          "$SDKMANAGER" --install "platform-tools" "platforms;android-35" "build-tools;35.0.0" 2>&1 | tail -5
-
-          echo "sdk.dir=$SDK" > android-app/local.properties   # local only, git-ignored
-          java -version
+          if ! "$SDKMANAGER" --install "platform-tools" "platforms;android-35" "build-tools;35.0.0" 2>&1 | tail -8; then
+            echo "::error::sdkmanager failed to install platform 35 / build-tools 35"
+            exit 1
+          fi
+          ls -1 "$SDK" || true
+          echo "sdk.dir=$SDK" > android-app/local.properties   # git-ignored
+          echo "::notice::Android SDK ready at $SDK"
 
       - name: Generate the Gradle wrapper
         working-directory: android-app
