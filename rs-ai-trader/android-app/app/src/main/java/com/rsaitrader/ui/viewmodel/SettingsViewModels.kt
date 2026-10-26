@@ -35,7 +35,7 @@ data class ApiSettingsState(
 
 class ApiSettingsViewModel : ViewModel() {
 
-    private val repo = ServiceLocator.credentials
+    private val repo get() = ServiceLocator.credentials
 
     private val _state = MutableStateFlow(ApiSettingsState())
     val state: StateFlow<ApiSettingsState> = _state.asStateFlow()
@@ -125,7 +125,7 @@ data class SecurityState(
 
 class SecurityViewModel : ViewModel() {
 
-    private val session = ServiceLocator.session
+    private val session get() = ServiceLocator.session
 
     private val _state = MutableStateFlow(SecurityState())
     val state: StateFlow<SecurityState> = _state.asStateFlow()
@@ -188,10 +188,10 @@ data class AppSettingsState(
 
 class AppSettingsViewModel : ViewModel() {
 
-    private val market = ServiceLocator.market
-    private val notificationsRepo = ServiceLocator.notifications
-    private val session = ServiceLocator.session
-    private val favorites = ServiceLocator.favorites
+    private val market get() = ServiceLocator.market
+    private val notificationsRepo get() = ServiceLocator.notifications
+    private val session get() = ServiceLocator.session
+    private val favorites get() = ServiceLocator.favorites
 
     private val _state = MutableStateFlow(AppSettingsState(language = favorites.language()))
     val state: StateFlow<AppSettingsState> = _state.asStateFlow()
@@ -254,7 +254,7 @@ data class AdminState(
 
 class AdminViewModel : ViewModel() {
 
-    private val repo = ServiceLocator.admin
+    private val repo get() = ServiceLocator.admin
 
     private val _state = MutableStateFlow(AdminState())
     val state: StateFlow<AdminState> = _state.asStateFlow()

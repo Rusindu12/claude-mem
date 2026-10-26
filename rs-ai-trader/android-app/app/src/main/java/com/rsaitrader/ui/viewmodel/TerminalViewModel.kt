@@ -58,12 +58,12 @@ data class TerminalState(
 
 class TerminalViewModel : ViewModel() {
 
-    private val market = ServiceLocator.market
-    private val trading = ServiceLocator.trading
-    private val portfolioRepo = ServiceLocator.portfolio
-    private val riskRepo = ServiceLocator.risk
-    private val favorites = ServiceLocator.favorites
-    private val feed = ServiceLocator.feed
+    private val market get() = ServiceLocator.market
+    private val trading get() = ServiceLocator.trading
+    private val portfolioRepo get() = ServiceLocator.portfolio
+    private val riskRepo get() = ServiceLocator.risk
+    private val favorites get() = ServiceLocator.favorites
+    private val feed get() = ServiceLocator.feed
 
     private val _state = MutableStateFlow(TerminalState(symbol = favorites.lastSymbol()))
     val state: StateFlow<TerminalState> = _state.asStateFlow()

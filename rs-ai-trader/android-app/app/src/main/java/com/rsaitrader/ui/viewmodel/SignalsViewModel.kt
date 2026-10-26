@@ -25,8 +25,8 @@ data class SignalsState(
 
 class SignalsViewModel : ViewModel() {
 
-    private val signals = ServiceLocator.signals
-    private val favorites = ServiceLocator.favorites
+    private val signals get() = ServiceLocator.signals
+    private val favorites get() = ServiceLocator.favorites
 
     private val _state = MutableStateFlow(SignalsState(symbol = favorites.lastSymbol()))
     val state: StateFlow<SignalsState> = _state.asStateFlow()

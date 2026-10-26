@@ -38,8 +38,8 @@ data class AssistantState(
 
 class AssistantViewModel : ViewModel() {
 
-    private val repo = ServiceLocator.assistant
-    private val favorites = ServiceLocator.favorites
+    private val repo get() = ServiceLocator.assistant
+    private val favorites get() = ServiceLocator.favorites
 
     private val _state = MutableStateFlow(
         AssistantState(lang = favorites.language(), symbol = favorites.lastSymbol()),

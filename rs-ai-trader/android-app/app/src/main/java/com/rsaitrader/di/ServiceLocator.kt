@@ -94,12 +94,16 @@ object ServiceLocator {
     /**
      * Rebuild the whole graph against a different backend URL.
      *
-     * Existing ViewModels keep the repositories they were created with, so call
-     * this from a cold path (sign-in) or ask the user to restart the app after
-     * changing the server in Settings.
+     * Stored session tokens are dropped because they belong to the previous
+     * server, so the user has to sign in again. ViewModels resolve repositories
+     * through [ServiceLocator] getters, which is why this is safe to call while
+     * a screen is alive.
      */
     fun reconfigure(context: Context) {
-        feed.stop()
+        if (this::feed.isInitialized) feed.stop()
+        // Tokens are scoped to one backend; keeping them would send credentials
+        // issued by the old server to the new one.
+        if (this::apiClient.isInitialized) runCatching { apiClient.tokenStore.clear() }
         apiClient = ApiClient(context.applicationContext, server.baseUrl())
         val api = apiClient.api
         session = SessionRepository(api, apiClient)

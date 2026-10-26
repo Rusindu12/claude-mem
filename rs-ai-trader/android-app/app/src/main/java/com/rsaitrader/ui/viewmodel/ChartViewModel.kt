@@ -33,10 +33,10 @@ data class ChartState(
 
 class ChartViewModel : ViewModel() {
 
-    private val market = ServiceLocator.market
-    private val signals = ServiceLocator.signals
-    private val favorites = ServiceLocator.favorites
-    private val feed = ServiceLocator.feed
+    private val market get() = ServiceLocator.market
+    private val signals get() = ServiceLocator.signals
+    private val favorites get() = ServiceLocator.favorites
+    private val feed get() = ServiceLocator.feed
 
     private val _state = MutableStateFlow(
         ChartState(symbol = favorites.lastSymbol(), interval = "1h"),

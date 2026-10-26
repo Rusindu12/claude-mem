@@ -54,9 +54,9 @@ data class WatchlistState(
 
 class WatchlistViewModel : ViewModel() {
 
-    private val market = ServiceLocator.market
-    private val favorites = ServiceLocator.favorites
-    private val feed = ServiceLocator.feed
+    private val market get() = ServiceLocator.market
+    private val favorites get() = ServiceLocator.favorites
+    private val feed get() = ServiceLocator.feed
 
     private val _state = MutableStateFlow(
         WatchlistState(favorites = favorites.favorites(), search = ""),

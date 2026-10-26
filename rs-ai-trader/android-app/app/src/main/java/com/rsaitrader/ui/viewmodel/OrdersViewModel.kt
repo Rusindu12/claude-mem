@@ -26,7 +26,7 @@ data class OrdersState(
 
 class OrdersViewModel : ViewModel() {
 
-    private val trading = ServiceLocator.trading
+    private val trading get() = ServiceLocator.trading
 
     private val _state = MutableStateFlow(OrdersState())
     val state: StateFlow<OrdersState> = _state.asStateFlow()
@@ -94,7 +94,7 @@ data class PortfolioState(
 
 class PortfolioViewModel : ViewModel() {
 
-    private val repo = ServiceLocator.portfolio
+    private val repo get() = ServiceLocator.portfolio
 
     private val _state = MutableStateFlow(PortfolioState())
     val state: StateFlow<PortfolioState> = _state.asStateFlow()
@@ -145,7 +145,7 @@ data class AnalyticsState(
 
 class AnalyticsViewModel : ViewModel() {
 
-    private val repo = ServiceLocator.portfolio
+    private val repo get() = ServiceLocator.portfolio
 
     private val _state = MutableStateFlow(AnalyticsState())
     val state: StateFlow<AnalyticsState> = _state.asStateFlow()
@@ -190,8 +190,8 @@ data class BacktestState(
 
 class BacktestViewModel : ViewModel() {
 
-    private val signals = ServiceLocator.signals
-    private val favorites = ServiceLocator.favorites
+    private val signals get() = ServiceLocator.signals
+    private val favorites get() = ServiceLocator.favorites
 
     private val _state = MutableStateFlow(BacktestState(symbol = favorites.lastSymbol()))
     val state: StateFlow<BacktestState> = _state.asStateFlow()

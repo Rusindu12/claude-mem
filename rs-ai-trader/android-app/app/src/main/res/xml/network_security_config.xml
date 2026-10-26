@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Production traffic must be HTTPS. Cleartext is permitted only for the local
-  development host so that an emulator can reach the backend on your machine.
-  Remove the domain-config block for a release build if you deploy over TLS.
+  SHIPPED (release) network policy: HTTPS only.
+
+  Release builds must talk to the backend over TLS. There is deliberately no
+  cleartext exception here — not even for 10.0.2.2 or localhost — so a release
+  APK can never be pointed at an unencrypted server.
+
+  Debug builds override this file with app/src/debug/res/xml/network_security_config.xml,
+  which permits cleartext for local/LAN development backends.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
@@ -10,8 +15,4 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">10.0.2.2</domain>
-        <domain includeSubdomains="false">localhost</domain>
-    </domain-config>
 </network-security-config>

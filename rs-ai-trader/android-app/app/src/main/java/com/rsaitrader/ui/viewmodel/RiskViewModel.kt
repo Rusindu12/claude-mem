@@ -39,7 +39,7 @@ data class RiskState(
 
 class RiskViewModel : ViewModel() {
 
-    private val repo = ServiceLocator.risk
+    private val repo get() = ServiceLocator.risk
 
     private val _state = MutableStateFlow(RiskState())
     val state: StateFlow<RiskState> = _state.asStateFlow()
@@ -207,7 +207,7 @@ data class AlertsState(
 
 class AlertsViewModel : ViewModel() {
 
-    private val repo = ServiceLocator.alerts
+    private val repo get() = ServiceLocator.alerts
 
     private val _state = MutableStateFlow(AlertsState())
     val state: StateFlow<AlertsState> = _state.asStateFlow()

@@ -26,7 +26,7 @@ data class AuthFormState(
 
 class AuthViewModel : ViewModel() {
 
-    private val repo = ServiceLocator.session
+    private val repo get() = ServiceLocator.session
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Booting)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()

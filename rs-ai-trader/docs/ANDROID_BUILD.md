@@ -24,20 +24,38 @@ Android Studio generates the same files automatically when you open the project.
 ## 2. Where the backend URL lives
 
 `android-app/app/build.gradle.kts` reads the `rsaiBaseUrl` Gradle property and bakes it into
-`BuildConfig.API_BASE_URL`; `WEBSOCKET_BASE_URL` is derived by swapping `http` → `ws`.
+`BuildConfig.API_BASE_URL`; `WEBSOCKET_BASE_URL` is derived by swapping `http` → `ws`. That value is
+only the **default**.
+
+The effective URL comes from `data/ServerConfig.kt`: it reads a saved override from SharedPreferences
+and falls back to `BuildConfig.API_BASE_URL`. You can therefore install one APK and point it at a
+different machine without rebuilding:
+
+* sign-in screen → tap the green **Server:** line under the form;
+* **More → Settings** → *Backend* row shows the URL in force and whether it is overridden.
+
+Saving a new URL stores it in the app's private preferences, rebuilds the Retrofit/WebSocket graph
+(`ServiceLocator.reconfigure`) and clears the stored session tokens — they were issued by the previous
+server, so you sign in again against the new one. **Use default** clears the override.
 
 | Scenario | URL |
 |---|---|
-| Emulator → host machine | `http://10.0.2.2:8000/` (default) |
-| Physical phone on same Wi-Fi | `http://192.168.1.20:8000/` (your host LAN IP) |
-| Production | `https://api.example.com/` |
+| Emulator → host machine | `http://10.0.2.2:8000/` (build default) |
+| Physical phone on same Wi-Fi | `http://192.168.1.20:8000/` (your host LAN IP, port 8000) |
+| Production | `https://api.example.com/` (HTTPS required, see below) |
 
-Cleartext HTTP is only permitted for `10.0.2.2` and `localhost` (debug). For a LAN IP you must either
-use HTTPS or temporarily extend `res/xml/network_security_config.xml`; that file is debug-only by
-design and release builds reject cleartext.
+Cleartext policy is split by build type:
 
-For a physical device, also add the origin to the backend's `ALLOWED_ORIGINS` if you use a browser
-client, and make sure the backend listens on `0.0.0.0`.
+* `app/src/main/res/xml/network_security_config.xml` — the shipped policy. HTTPS only, no cleartext
+  exceptions. Release builds cannot talk to `http://` at all.
+* `app/src/debug/res/xml/network_security_config.xml` — debug builds only; permits cleartext so a debug
+  APK can reach `http://<LAN-IP>:8000/`. The debug resource overlays the main one, so nothing has to be
+  edited to test on a phone.
+
+For a physical device, make the backend listen on `0.0.0.0` (Docker Compose already does) and open the
+port in your firewall; add the origin to `ALLOWED_ORIGINS` only if a browser client is used. The phone
+and the computer must be on the same network, and `http://` on the phone will show a warning in the
+server dialog — expected for debug builds, not allowed in release.
 
 ## 3. Debug build (CLI)
 
@@ -57,6 +75,22 @@ adb shell am start -n com.rsaitrader.debug/com.rsaitrader.MainActivity
 
 The debug application id is `com.rsaitrader.debug` (suffix), so a debug build can coexist with a
 release build.
+
+### One-command helper
+
+`android-app/build_apk.sh` wraps the steps above (JDK check, `local.properties`, wrapper bootstrap,
+build, optional signing check and install):
+
+```bash
+cd android-app
+./build_apk.sh                                   # debug APK, default URL
+./build_apk.sh --url http://192.168.1.20:8000/   # debug APK for a phone on your LAN
+./build_apk.sh --release --url https://api.example.com/
+./build_apk.sh --install                         # build then `adb install -r`
+```
+
+It needs `JAVA_HOME` (or `java` on `PATH`) and either `gradle` on `PATH` (to generate the missing
+wrapper) or an Android Studio–generated wrapper.
 
 ## 4. Debug build (Android Studio)
 
@@ -147,8 +181,25 @@ add the API key later under **More → API connection** (server-side only).
 
 ## 9. Honest status
 
-The Kotlin sources in this repository were **not compiled** while they were written: the build
-sandbox had no JDK, Android SDK or Gradle, so no APK was produced and the unit tests in
-`app/src/test/java/com/rsaitrader/core/format/FmtTest.kt` were not executed. Treat your first local
-`./gradlew :app:assembleDebug` as the real compile verification, and expect to fix minor issues
-(unused imports, an occasional type mismatch) before it succeeds.
+| Item | Status |
+|---|---|
+| `./gradlew :app:assembleDebug` | **Verified** in GitHub Actions (`Android APK` workflow): Kotlin + Compose compile cleanly, debug APK produced (~19 MB) |
+| Unit tests (`app/src/test/.../FmtTest.kt`) | Run in CI as a non-blocking step |
+| Signed release APK | **Not built** — the release job needs `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` secrets |
+| First run on a real device / emulator | **Not verified** — no device or emulator was available |
+| Live call to a running backend from the app | **Not verified** — no Docker/binance egress in the build sandbox |
+
+The APK artifact is attached to the workflow run: **Actions → Android APK → latest run → Artifacts →
+`rs-ai-trader-debug-apk`**. Expect to fix small runtime issues (a wrong field name, a layout overflow) on
+first install; the compile step is no longer a risk.
+
+### First run on a phone, in order
+
+1. Start the backend where the phone can reach it (`docker compose up`, port 8000, firewall open).
+2. Install the debug APK, open it, tap **Server:** on the sign-in screen, enter
+   `http://<computer-LAN-IP>:8000/`, save.
+3. Register a user (first registered user is **not** automatically admin; promote server-side per
+   `docs/SECURITY.md`).
+4. Dashboard → markets → chart → AI signal; the connection pill shows the WebSocket state.
+5. Settings → AI mode stays **ANALYSIS ONLY**; paper trading is opt-in; live spot requires the
+   server-side consent flow and is off by default.

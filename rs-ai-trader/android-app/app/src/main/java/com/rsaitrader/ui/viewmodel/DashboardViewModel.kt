@@ -33,12 +33,12 @@ data class DashboardState(
 
 class DashboardViewModel : ViewModel() {
 
-    private val market = ServiceLocator.market
-    private val portfolioRepo = ServiceLocator.portfolio
-    private val signalRepo = ServiceLocator.signals
-    private val riskRepo = ServiceLocator.risk
-    private val favorites = ServiceLocator.favorites
-    private val feed = ServiceLocator.feed
+    private val market get() = ServiceLocator.market
+    private val portfolioRepo get() = ServiceLocator.portfolio
+    private val signalRepo get() = ServiceLocator.signals
+    private val riskRepo get() = ServiceLocator.risk
+    private val favorites get() = ServiceLocator.favorites
+    private val feed get() = ServiceLocator.feed
 
     private val _state = MutableStateFlow(DashboardState())
     val state: StateFlow<DashboardState> = _state.asStateFlow()
