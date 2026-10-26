@@ -1,0 +1,35 @@
+{
+  "model_version": "rsai-gbdt-v1",
+  "trained_at": "2026-10-26T13:31:30.085506+00:00",
+  "timeframe": "1h",
+  "horizon_bars": 3,
+  "cost_bps_assumed": 20.0,
+  "evaluation": {
+    "period_start": "2026-09-25 18:00:00+00:00",
+    "period_end": "2026-10-26 10:00:00+00:00",
+    "out_of_sample_rows": 737,
+    "long": {
+      "samples": 737,
+      "accuracy": 0.5305291723202171,
+      "brier": 0.2502624027565158,
+      "brier_baseline": 0.24898328144647427,
+      "roc_auc": 0.4993197278911564,
+      "log_loss": 0.6937301041440205,
+      "base_rate": 0.4681139755766621,
+      "expected_calibration_error": 0.025087933806376393,
+      "trusted": false
+    },
+    "short": {
+      "samples": 737,
+      "accuracy": 0.49525101763907736,
+      "brier": 0.25124092861983877,
+      "brier_baseline": 0.24860770773000673,
+      "roc_auc": 0.4780873248615184,
+      "log_loss": 0.6956411311639114,
+      "base_rate": 0.4626865671641791,
+      "expected_calibration_error": 0.035994105160083875,
+      "trusted": false
+    }
+  },
+  "note": "Out-of-sample metrics are historical estimates on unseen data. They are not a forecast of future accuracy."
+}

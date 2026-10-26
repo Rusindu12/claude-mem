@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RS AI TRADER</string>
+    <string name="app_tagline">Analysis · Paper trading · Risk first</string>
+    <string name="disclaimer">Not financial advice. Trading involves substantial risk of loss.</string>
+</resources>

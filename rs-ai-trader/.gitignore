@@ -1,0 +1,53 @@
+# ---- secrets & local config (never commit) ----
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+keystore.properties
+local.properties
+google-services.json
+serviceAccountKey.json
+
+# ---- python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+.mypy_cache/
+
+# ---- training artifacts / datasets ----
+ai-engine/datasets/
+*.parquet
+*.csv.gz
+ai-engine/artifacts/*.tmp
+ai-engine/artifacts/*.log
+
+# ---- android / gradle ----
+.gradle/
+build/
+app/build/
+captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+.cxx/
+.externalNativeBuild/
+
+# ---- editors / OS ----
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ---- logs ----
+*.log
+logs/

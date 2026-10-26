@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Never back up session tokens or cached account data. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="rsai_secure_prefs.xml" />
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="datastore" />
+</full-backup-content>
