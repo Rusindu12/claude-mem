@@ -26,7 +26,9 @@ on:
   push:
     branches: ["**"]
     paths:
-      - "android-app/**"
+      # The project lives under rs-ai-trader/ in this repository. If you extract
+      # it into its own repository, drop the prefix from these globs.
+      - "rs-ai-trader/android-app/**"
       - ".github/workflows/android-apk.yml"
 
 concurrency:
