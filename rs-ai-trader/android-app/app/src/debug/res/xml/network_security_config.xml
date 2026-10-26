@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEBUG-ONLY network policy (overrides the main one for debug builds).
+
+  Cleartext HTTP is allowed here so a debug APK can talk to a development
+  backend on your LAN (e.g. http://192.168.1.20:8000/). The release build keeps
+  the strict policy from src/main/res/xml/network_security_config.xml: HTTPS
+  only, with no cleartext exceptions.
+
+  Never ship this file in a release build.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

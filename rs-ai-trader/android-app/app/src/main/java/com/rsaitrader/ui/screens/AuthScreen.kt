@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,6 +38,8 @@ import com.rsaitrader.ui.components.PrimaryButton
 import com.rsaitrader.ui.components.RsPasswordField
 import com.rsaitrader.ui.components.RsTextField
 import com.rsaitrader.ui.components.SegmentedRow
+import com.rsaitrader.data.ServerConfig
+import com.rsaitrader.di.ServiceLocator
 import com.rsaitrader.ui.theme.RsColors
 import com.rsaitrader.ui.viewmodel.AuthViewModel
 
@@ -62,6 +67,77 @@ fun AuthScreen(viewModel: AuthViewModel) {
     var showResetConfirm by remember { mutableStateOf(false) }
     var resetToken by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val serverConfig = remember(context) { ServerConfig(context) }
+    var showServerDialog by remember { mutableStateOf(false) }
+    var serverInput by remember { mutableStateOf(serverConfig.baseUrl()) }
+    var serverError by remember { mutableStateOf<String?>(null) }
+
+    if (showServerDialog) {
+        AlertDialog(
+            onDismissRequest = { showServerDialog = false },
+            containerColor = RsColors.Navy,
+            title = { Text("Backend server") },
+            text = {
+                Column {
+                    Text(
+                        "The app talks only to this server; your Binance keys never touch the phone. " +
+                            "Use http://<your-computer-IP>:8000/ for a phone on the same Wi-Fi, or your HTTPS domain.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = RsColors.TextSecondary,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    RsTextField(
+                        value = serverInput,
+                        onValueChange = { serverInput = it; serverError = null },
+                        label = "Base URL",
+                        placeholder = "http://192.168.1.20:8000/",
+                        error = serverError,
+                        keyboardType = KeyboardType.Uri,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Default: ${ServiceLocator.buildTimeBaseUrl}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = RsColors.TextMuted,
+                    )
+                    if (ServerConfig.isPrivateHost(serverInput) && serverInput.startsWith("http://")) {
+                        Text(
+                            "Cleartext HTTP is allowed in debug builds only. A release build requires HTTPS.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = RsColors.Warning,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val error = ServerConfig.validate(serverInput)
+                    if (error != null) {
+                        serverError = error
+                    } else {
+                        serverConfig.setBaseUrl(serverInput)
+                        ServiceLocator.reconfigure(context)
+                        viewModel.clearMessages()
+                        viewModel.bootstrap()
+                        showServerDialog = false
+                    }
+                }) { Text("Save & reconnect", color = RsColors.Emerald) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        serverConfig.reset()
+                        ServiceLocator.reconfigure(context)
+                        serverInput = serverConfig.baseUrl()
+                        serverError = null
+                    }) { Text("Use default", color = RsColors.TextMuted) }
+                    TextButton(onClick = { showServerDialog = false }) { Text("Cancel") }
+                }
+            },
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -245,6 +321,13 @@ fun AuthScreen(viewModel: AuthViewModel) {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = RsColors.EmeraldGlow)
                 }
             }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Server: ${ServiceLocator.server.baseUrl()}",
+                style = MaterialTheme.typography.labelSmall,
+                color = RsColors.Emerald,
+                modifier = Modifier.clickable { showServerDialog = true },
+            )
             Spacer(Modifier.height(24.dp))
             Text(
                 "Your Binance API keys are never entered here. They are added later under Settings → API connection " +

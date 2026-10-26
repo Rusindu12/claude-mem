@@ -45,7 +45,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.remember
 import com.rsaitrader.BuildConfig
+import com.rsaitrader.di.ServiceLocator
 import com.rsaitrader.core.format.Fmt
 import com.rsaitrader.ui.components.Divider2
 import com.rsaitrader.ui.components.DangerButton
@@ -65,6 +67,7 @@ fun SettingsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val config = state.config.data
+    val server = remember { ServiceLocator.server }
     val unread = state.notifications.data?.count { !it.read } ?: 0
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
@@ -197,7 +200,12 @@ fun SettingsScreen(
         Spacer(Modifier.height(10.dp))
         SectionCard(title = "About") {
             StatRow("App version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
-            StatRow("Backend", if (BuildConfig.DEBUG) BuildConfig.API_BASE_URL else "configured at build time")
+            StatRow("Backend", server.baseUrl(), mono = false)
+            StatRow(
+                "Backend source",
+                if (server.isOverridden) "overridden in the app" else "set at build time (${BuildConfig.API_BASE_URL})",
+                mono = false,
+            )
             StatRow("Exchange environment", config?.binanceEnvironment ?: "—")
             StatRow("Paper trading", if (config?.paperTradingEnabled != false) "Enabled" else "Disabled")
             StatRow("Live trading (server)", if (config?.liveTradingEnabled == true) "Enabled" else "Disabled")

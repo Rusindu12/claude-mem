@@ -9,6 +9,7 @@ import com.rsaitrader.data.AlertRepository
 import com.rsaitrader.data.AssistantRepository
 import com.rsaitrader.data.CredentialRepository
 import com.rsaitrader.data.FavoritesStore
+import com.rsaitrader.data.ServerConfig
 import com.rsaitrader.data.MarketRepository
 import com.rsaitrader.data.NotificationRepository
 import com.rsaitrader.data.PortfolioRepository
@@ -57,11 +58,18 @@ object ServiceLocator {
     lateinit var favorites: FavoritesStore
         private set
 
+    lateinit var server: ServerConfig
+        private set
+
+    /** Gradle-time default, kept for the settings screen. */
+    val buildTimeBaseUrl: String get() = com.rsaitrader.BuildConfig.API_BASE_URL
+
     val tokenStore get() = apiClient.tokenStore
 
     fun init(context: Context) {
         if (this::session.isInitialized) return
-        apiClient = ApiClient(context.applicationContext)
+        server = ServerConfig(context.applicationContext)
+        apiClient = ApiClient(context.applicationContext, server.baseUrl())
         val api = apiClient.api
         session = SessionRepository(api, apiClient)
         market = MarketRepository(api)
@@ -81,6 +89,36 @@ object ServiceLocator {
             ),
         )
         favorites = FavoritesStore(context.applicationContext)
+    }
+
+    /**
+     * Rebuild the whole graph against a different backend URL.
+     *
+     * Existing ViewModels keep the repositories they were created with, so call
+     * this from a cold path (sign-in) or ask the user to restart the app after
+     * changing the server in Settings.
+     */
+    fun reconfigure(context: Context) {
+        feed.stop()
+        apiClient = ApiClient(context.applicationContext, server.baseUrl())
+        val api = apiClient.api
+        session = SessionRepository(api, apiClient)
+        market = MarketRepository(api)
+        signals = SignalRepository(api)
+        trading = TradingRepository(api)
+        portfolio = PortfolioRepository(api)
+        risk = RiskRepository(api)
+        alerts = AlertRepository(api)
+        assistant = AssistantRepository(api)
+        credentials = CredentialRepository(api)
+        notifications = NotificationRepository(api)
+        admin = AdminRepository(api)
+        feed = MarketFeed(
+            PriceStream(
+                baseUrl = apiClient.websocketBaseUrl,
+                tokenProvider = { apiClient.tokenStore.accessToken() },
+            ),
+        )
     }
 
     val websocketBaseUrl: String
