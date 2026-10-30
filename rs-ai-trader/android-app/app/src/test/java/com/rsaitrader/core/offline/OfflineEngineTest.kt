@@ -51,7 +51,8 @@ class OfflineEngineTest {
     @Test
     fun indicatorsMatchKnownValues() {
         val closes = listOf(1.0, 2.0, 3.0, 4.0, 5.0)
-        assertEquals(3.0, Indicators.sma(closes, 3)!!, 1e-9)
+        // SMA of the last three values of [1..5] is (3 + 4 + 5) / 3
+        assertEquals(4.0, Indicators.sma(closes, 3)!!, 1e-9)
         assertNull(Indicators.sma(closes, 6))
         // A monotonically rising series has no losses, so RSI is 100.
         assertEquals(100.0, Indicators.rsi(closes, 3)!!, 1e-9)
