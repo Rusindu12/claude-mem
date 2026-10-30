@@ -48,53 +48,53 @@ import kotlinx.serialization.json.JsonElement
 
 class SessionRepository(private val api: ApiService, private val client: ApiClient) : SessionApi {
 
-    val user: UserDto? get() = client.tokenStore.user()
-    val isSignedIn: Boolean get() = client.tokenStore.isSignedIn()
-    val isAdmin: Boolean get() = client.tokenStore.isAdmin
+    override val user: UserDto? get() = client.tokenStore.user()
+    override val isSignedIn: Boolean get() = client.tokenStore.isSignedIn()
+    override val isAdmin: Boolean get() = client.tokenStore.isAdmin
 
-    suspend fun login(email: String, password: String): ApiResult<TokenPair> =
+    override suspend fun login(email: String, password: String): ApiResult<TokenPair> =
         safeCall { api.login(com.rsaitrader.core.network.LoginRequest(email.trim(), password)) }
             .also { persist(it) }
 
-    suspend fun register(email: String, password: String, displayName: String, language: String): ApiResult<TokenPair> =
+    override suspend fun register(email: String, password: String, displayName: String, language: String): ApiResult<TokenPair> =
         safeCall { api.register(RegisterRequest(email.trim(), password, displayName, language)) }
             .also { persist(it) }
 
-    suspend fun restore(): ApiResult<UserDto> = safeCall { api.me() }
+    override suspend fun restore(): ApiResult<UserDto> = safeCall { api.me() }
         .also { result -> (result as? ApiResult.Success)?.let { client.tokenStore.saveUser(it.data) } }
 
-    suspend fun logout() {
+    override suspend fun logout() {
         val refresh = client.tokenStore.refreshToken()
         runCatching { api.logout(com.rsaitrader.core.network.LogoutRequest(refresh)) }
         client.tokenStore.clear()
     }
 
-    suspend fun logoutEverywhere(): ApiResult<Unit> = safeCall { api.logoutAll() }
+    override suspend fun logoutEverywhere(): ApiResult<Unit> = safeCall { api.logoutAll() }
         .map { }
         .also { client.tokenStore.clear() }
 
-    suspend fun sessions(): ApiResult<List<SessionDto>> = safeCall { api.sessions() }
+    override suspend fun sessions(): ApiResult<List<SessionDto>> = safeCall { api.sessions() }
 
-    suspend fun revokeSession(id: String): ApiResult<Unit> = safeCall { api.revokeSession(id) }
+    override suspend fun revokeSession(id: String): ApiResult<Unit> = safeCall { api.revokeSession(id) }
 
-    suspend fun deleteAccount(password: String, confirmation: String): ApiResult<Unit> =
+    override suspend fun deleteAccount(password: String, confirmation: String): ApiResult<Unit> =
         safeCall { api.deleteAccount(com.rsaitrader.core.network.DeleteAccountRequest(password, confirmation)) }
             .map { }
             .also { if (it is ApiResult.Success) client.tokenStore.clear() }
 
-    suspend fun changePassword(current: String, newPassword: String): ApiResult<Unit> =
+    override suspend fun changePassword(current: String, newPassword: String): ApiResult<Unit> =
         safeCall { api.changePassword(ChangePasswordRequest(current, newPassword)) }
             .map { }
             .also { if (it is ApiResult.Success) client.tokenStore.clear() }
 
-    suspend fun requestPasswordReset(email: String): ApiResult<JsonElement> =
+    override suspend fun requestPasswordReset(email: String): ApiResult<JsonElement> =
         safeCall { api.requestPasswordReset(PasswordResetRequest(email)) }
 
-    suspend fun confirmPasswordReset(token: String, newPassword: String): ApiResult<Unit> =
+    override suspend fun confirmPasswordReset(token: String, newPassword: String): ApiResult<Unit> =
         safeCall { api.confirmPasswordReset(com.rsaitrader.core.network.PasswordResetConfirm(token, newPassword)) }
             .map { }
 
-    suspend fun updateProfile(displayName: String?, language: String?): ApiResult<UserDto> =
+    override suspend fun updateProfile(displayName: String?, language: String?): ApiResult<UserDto> =
         safeCall { api.updateProfile(displayName, language) }
             .also { result -> (result as? ApiResult.Success)?.let { client.tokenStore.saveUser(it.data) } }
 
@@ -104,102 +104,102 @@ class SessionRepository(private val api: ApiService, private val client: ApiClie
 }
 
 class MarketRepository(private val api: ApiService) : MarketApi {
-    suspend fun config(): ApiResult<AppConfigDto> = safeCall { api.appConfig() }
-    suspend fun overview(): ApiResult<OverviewDto> = safeCall { api.overview() }
-    suspend fun tickers(symbols: List<String>): ApiResult<List<TickerDto>> =
+    override suspend fun config(): ApiResult<AppConfigDto> = safeCall { api.appConfig() }
+    override suspend fun overview(): ApiResult<OverviewDto> = safeCall { api.overview() }
+    override suspend fun tickers(symbols: List<String>): ApiResult<List<TickerDto>> =
         safeCall { api.tickers(symbols.joinToString(",")) }
-    suspend fun ticker(symbol: String): ApiResult<TickerDto> = safeCall { api.ticker(symbol) }
-    suspend fun klines(symbol: String, interval: String, limit: Int): ApiResult<KlineResponse> =
+    override suspend fun ticker(symbol: String): ApiResult<TickerDto> = safeCall { api.ticker(symbol) }
+    override suspend fun klines(symbol: String, interval: String, limit: Int): ApiResult<KlineResponse> =
         safeCall { api.klines(symbol, interval, limit) }
-    suspend fun depth(symbol: String, limit: Int): ApiResult<DepthDto> = safeCall { api.depth(symbol, limit) }
-    suspend fun trades(symbol: String): ApiResult<List<TradeTickDto>> = safeCall { api.recentTrades(symbol) }
-    suspend fun pairs(): ApiResult<PairsResponse> = safeCall { api.pairs() }
-    suspend fun health(): ApiResult<MarketHealthDto> =
+    override suspend fun depth(symbol: String, limit: Int): ApiResult<DepthDto> = safeCall { api.depth(symbol, limit) }
+    override suspend fun trades(symbol: String): ApiResult<List<TradeTickDto>> = safeCall { api.recentTrades(symbol) }
+    override suspend fun pairs(): ApiResult<PairsResponse> = safeCall { api.pairs() }
+    override suspend fun health(): ApiResult<MarketHealthDto> =
         safeCall { api.appConfig() }.map { it.marketData }
 }
 
 class SignalRepository(private val api: ApiService) : SignalApi {
-    suspend fun signal(symbol: String, timeframe: String): ApiResult<SignalDto> =
+    override suspend fun signal(symbol: String, timeframe: String): ApiResult<SignalDto> =
         safeCall { api.signal(symbol, timeframe) }
-    suspend fun latest(symbol: String, timeframe: String): ApiResult<SignalDto> =
+    override suspend fun latest(symbol: String, timeframe: String): ApiResult<SignalDto> =
         safeCall { api.latestSignal(symbol, timeframe) }
-    suspend fun model(symbol: String, timeframe: String): ApiResult<ModelReportDto> =
+    override suspend fun model(symbol: String, timeframe: String): ApiResult<ModelReportDto> =
         safeCall { api.modelReport(symbol, timeframe) }
-    suspend fun backtest(body: BacktestRequest): ApiResult<BacktestResultDto> = safeCall { api.backtest(body) }
-    suspend fun backtestHistory(): ApiResult<List<JsonElement>> = safeCall { api.backtestHistory() }
+    override suspend fun backtest(body: BacktestRequest): ApiResult<BacktestResultDto> = safeCall { api.backtest(body) }
+    override suspend fun backtestHistory(): ApiResult<List<JsonElement>> = safeCall { api.backtestHistory() }
 }
 
 class TradingRepository(private val api: ApiService) : TradingApi {
-    suspend fun preview(body: OrderRequest): ApiResult<OrderPreviewDto> = safeCall { api.previewOrder(body) }
-    suspend fun place(body: OrderCreateRequest): ApiResult<OrderDto> = safeCall { api.placeOrder(body) }
-    suspend fun orders(mode: String, openOnly: Boolean): ApiResult<List<OrderDto>> =
+    override suspend fun preview(body: OrderRequest): ApiResult<OrderPreviewDto> = safeCall { api.previewOrder(body) }
+    override suspend fun place(body: OrderCreateRequest): ApiResult<OrderDto> = safeCall { api.placeOrder(body) }
+    override suspend fun orders(mode: String, openOnly: Boolean): ApiResult<List<OrderDto>> =
         safeCall { api.orders(mode, openOnly) }
-    suspend fun cancel(id: String, mode: String): ApiResult<CancelResponse> =
+    override suspend fun cancel(id: String, mode: String): ApiResult<CancelResponse> =
         safeCall { api.cancelOrder(id, mode) }
-    suspend fun reconcile(): ApiResult<JsonElement> = safeCall { api.reconcileOrders() }
+    override suspend fun reconcile(): ApiResult<JsonElement> = safeCall { api.reconcileOrders() }
 }
 
 class PortfolioRepository(private val api: ApiService) : PortfolioApi {
-    suspend fun portfolio(mode: String): ApiResult<PortfolioDto> = safeCall { api.portfolio(mode) }
-    suspend fun analytics(mode: String, days: Int): ApiResult<AnalyticsDto> =
+    override suspend fun portfolio(mode: String): ApiResult<PortfolioDto> = safeCall { api.portfolio(mode) }
+    override suspend fun analytics(mode: String, days: Int): ApiResult<AnalyticsDto> =
         safeCall { api.analytics(mode, days) }
-    suspend fun resetPaper(startingEquity: String): ApiResult<Unit> =
+    override suspend fun resetPaper(startingEquity: String): ApiResult<Unit> =
         safeCall { api.resetPaper(startingEquity) }.map { }
 }
 
 class RiskRepository(private val api: ApiService) : RiskApi {
-    suspend fun policy(): ApiResult<RiskPolicyDto> = safeCall { api.riskPolicy() }
-    suspend fun updatePolicy(body: RiskPolicyUpdate): ApiResult<RiskPolicyDto> =
+    override suspend fun policy(): ApiResult<RiskPolicyDto> = safeCall { api.riskPolicy() }
+    override suspend fun updatePolicy(body: RiskPolicyUpdate): ApiResult<RiskPolicyDto> =
         safeCall { api.updateRiskPolicy(body) }
-    suspend fun status(): ApiResult<RiskStatusDto> = safeCall { api.riskStatus() }
-    suspend fun optInLive(optIn: Boolean, confirmation: String, acknowledge: Boolean): ApiResult<JsonElement> =
+    override suspend fun status(): ApiResult<RiskStatusDto> = safeCall { api.riskStatus() }
+    override suspend fun optInLive(optIn: Boolean, confirmation: String, acknowledge: Boolean): ApiResult<JsonElement> =
         safeCall { api.liveOptIn(LiveOptInRequest(optIn, confirmation, acknowledge)) }
-    suspend fun emergencyStop(): ApiResult<JsonElement> = safeCall { api.emergencyStop() }
+    override suspend fun emergencyStop(): ApiResult<JsonElement> = safeCall { api.emergencyStop() }
 }
 
 class AlertRepository(private val api: ApiService) : AlertApi {
-    suspend fun alerts(): ApiResult<List<AlertDto>> = safeCall { api.alerts() }
-    suspend fun create(symbol: String, condition: String, targetPrice: String?, note: String?): ApiResult<AlertDto> =
+    override suspend fun alerts(): ApiResult<List<AlertDto>> = safeCall { api.alerts() }
+    override suspend fun create(symbol: String, condition: String, targetPrice: String?, note: String?): ApiResult<AlertDto> =
         safeCall { api.createAlert(AlertCreateRequest(symbol, condition, targetPrice, note)) }
-    suspend fun delete(id: String): ApiResult<Unit> = safeCall { api.deleteAlert(id) }
-    suspend fun evaluate(): ApiResult<Unit> = safeCall { api.evaluateAlerts() }.map { }
+    override suspend fun delete(id: String): ApiResult<Unit> = safeCall { api.deleteAlert(id) }
+    override suspend fun evaluate(): ApiResult<Unit> = safeCall { api.evaluateAlerts() }.map { }
 }
 
 class AssistantRepository(private val api: ApiService) : AssistantApi {
-    suspend fun ask(question: String, lang: String?, symbol: String?, timeframe: String?): ApiResult<AssistantAnswerDto> =
+    override suspend fun ask(question: String, lang: String?, symbol: String?, timeframe: String?): ApiResult<AssistantAnswerDto> =
         safeCall { api.askAssistant(AssistantQuery(question, lang, symbol, timeframe)) }
 
-    suspend fun history(limit: Int): ApiResult<List<com.rsaitrader.core.network.AssistantHistoryDto>> =
+    override suspend fun history(limit: Int): ApiResult<List<com.rsaitrader.core.network.AssistantHistoryDto>> =
         safeCall { api.assistantHistory(limit) }
 }
 
 class CredentialRepository(private val api: ApiService) : CredentialApi {
-    suspend fun list(): ApiResult<CredentialListDto> = safeCall { api.credentials() }
-    suspend fun add(apiKey: String, apiSecret: String, label: String): ApiResult<CredentialDto> =
+    override suspend fun list(): ApiResult<CredentialListDto> = safeCall { api.credentials() }
+    override suspend fun add(apiKey: String, apiSecret: String, label: String): ApiResult<CredentialDto> =
         safeCall { api.addCredential(CredentialCreateRequest(apiKey.trim(), apiSecret.trim(), label)) }
-    suspend fun verify(id: String): ApiResult<JsonElement> = safeCall { api.verifyCredential(id) }
-    suspend fun revoke(id: String): ApiResult<Unit> = safeCall { api.revokeCredential(id) }
+    override suspend fun verify(id: String): ApiResult<JsonElement> = safeCall { api.verifyCredential(id) }
+    override suspend fun revoke(id: String): ApiResult<Unit> = safeCall { api.revokeCredential(id) }
 }
 
 class NotificationRepository(private val api: ApiService) : NotificationApi {
-    suspend fun list(): ApiResult<List<NotificationDto>> = safeCall { api.notifications() }
-    suspend fun markRead(): ApiResult<Unit> = safeCall { api.markNotificationsRead() }.map { }
+    override suspend fun list(): ApiResult<List<NotificationDto>> = safeCall { api.notifications() }
+    override suspend fun markRead(): ApiResult<Unit> = safeCall { api.markNotificationsRead() }.map { }
 }
 
 class AdminRepository(private val api: ApiService) : AdminApi {
-    suspend fun users(search: String?): ApiResult<com.rsaitrader.core.network.AdminUsersResponse> =
+    override suspend fun users(search: String?): ApiResult<com.rsaitrader.core.network.AdminUsersResponse> =
         safeCall { api.adminUsers(search) }
-    suspend fun health() = safeCall { api.adminHealth() }
-    suspend fun audit() = safeCall { api.adminAudit() }
-    suspend fun settings() = safeCall { api.adminSettings() }
-    suspend fun updateSetting(key: String, value: JsonElement) =
+    override suspend fun health() = safeCall { api.adminHealth() }
+    override suspend fun audit() = safeCall { api.adminAudit() }
+    override suspend fun settings() = safeCall { api.adminSettings() }
+    override suspend fun updateSetting(key: String, value: JsonElement) =
         safeCall { api.adminUpdateSetting(com.rsaitrader.core.network.SettingUpdateRequest(key, value)) }
-    suspend fun pairs() = safeCall { api.adminPairs() }
-    suspend fun syncPairs() = safeCall { api.adminSyncPairs() }
-    suspend fun togglePair(symbol: String, enabled: Boolean) =
+    override suspend fun pairs() = safeCall { api.adminPairs() }
+    override suspend fun syncPairs() = safeCall { api.adminSyncPairs() }
+    override suspend fun togglePair(symbol: String, enabled: Boolean) =
         safeCall { api.adminTogglePair(symbol, com.rsaitrader.core.network.PairToggleRequest(enabled)) }
-    suspend fun killSwitch(engage: Boolean, reason: String) =
+    override suspend fun killSwitch(engage: Boolean, reason: String) =
         safeCall { api.adminKillSwitch(KillSwitchRequest(engage, reason)) }
-    suspend fun updateUser(id: String, status: String?, role: String?) =
+    override suspend fun updateUser(id: String, status: String?, role: String?) =
         safeCall { api.adminUpdateUser(id, com.rsaitrader.core.network.AdminUserUpdate(status, role)) }
 }
