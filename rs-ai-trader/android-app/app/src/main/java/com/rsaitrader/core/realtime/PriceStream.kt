@@ -19,6 +19,11 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
 
+/** Anything that can push ticker frames: the backend socket, or the on-device simulator. */
+interface PriceSource {
+    fun stream(symbols: List<String>): Flow<StreamEvent>
+}
+
 sealed interface StreamEvent {
     data object Connecting : StreamEvent
     data class Connected(val symbols: List<String>, val serverTime: String?) : StreamEvent
@@ -56,11 +61,11 @@ class PriceStream(
         .pingInterval(20, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build(),
-) {
+) : PriceSource {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    fun stream(symbols: List<String>): Flow<StreamEvent> = flow {
+    override fun stream(symbols: List<String>): Flow<StreamEvent> = flow {
         if (symbols.isEmpty()) {
             emit(StreamEvent.ServerError("Select at least one market."))
             return@flow

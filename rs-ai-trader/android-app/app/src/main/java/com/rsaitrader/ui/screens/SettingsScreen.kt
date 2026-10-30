@@ -30,7 +30,9 @@ import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.WifiTethering
 import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +41,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +55,10 @@ import com.rsaitrader.di.ServiceLocator
 import com.rsaitrader.core.format.Fmt
 import com.rsaitrader.ui.components.Divider2
 import com.rsaitrader.ui.components.DangerButton
+import com.rsaitrader.data.AdminUnlock
 import com.rsaitrader.ui.components.ErrorBanner
+import com.rsaitrader.ui.components.RsPasswordField
+import com.rsaitrader.ui.components.RsTextField
 import com.rsaitrader.ui.components.SectionCard
 import com.rsaitrader.ui.components.SegmentedRow
 import com.rsaitrader.ui.components.StatRow
@@ -64,11 +71,24 @@ fun SettingsScreen(
     isAdmin: Boolean,
     onNavigate: (String) -> Unit,
     onLogout: () -> Unit,
+    deviceMode: Boolean = true,
+    onSwitchEngine: (Boolean) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val config = state.config.data
     val server = remember { ServiceLocator.server }
+    val adminUnlock = remember { ServiceLocator.adminUnlock }
     val unread = state.notifications.data?.count { !it.read } ?: 0
+
+    var showUnlockDialog by remember { mutableStateOf(false) }
+    var unlockInput by remember { mutableStateOf("") }
+    var unlockError by remember { mutableStateOf<String?>(null) }
+    var showChangeCodeDialog by remember { mutableStateOf(false) }
+    var currentCode by remember { mutableStateOf("") }
+    var newCode by remember { mutableStateOf("") }
+    var codeChangeMessage by remember { mutableStateOf<String?>(null) }
+    var unlockTick by remember { mutableIntStateOf(0) }
+    val adminAllowed = isAdmin || (remember(unlockTick) { adminUnlock.isUnlocked })
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(12.dp))
@@ -92,15 +112,166 @@ fun SettingsScreen(
             Text(it, color = RsColors.EmeraldGlow, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
         }
 
-        if (isAdmin) {
-            Spacer(Modifier.height(8.dp))
-            SettingsRow(
-                icon = Icons.Filled.AdminPanelSettings,
-                title = "Admin dashboard",
-                subtitle = "Users, audit log, symbol filters, global kill switch",
-                accent = RsColors.Violet,
-            ) { onNavigate("admin") }
+        if (showUnlockDialog) {
+            AlertDialog(
+                onDismissRequest = { showUnlockDialog = false },
+                containerColor = RsColors.Navy,
+                title = { Text("Admin unlock") },
+                text = {
+                    Column {
+                        Text(
+                            "Enter the on-device admin code. It is hashed with PBKDF2 and checked on the phone; " +
+                                "five wrong tries lock the gate for a while.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = RsColors.TextSecondary,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        RsPasswordField(
+                            value = unlockInput,
+                            onValueChange = { unlockInput = it; unlockError = null },
+                            label = "Admin code",
+                            error = unlockError,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        when (val result = adminUnlock.unlock(unlockInput)) {
+                            is AdminUnlock.Result.Unlocked -> {
+                                unlockTick++
+                                unlockInput = ""
+                                showUnlockDialog = false
+                                onNavigate("admin")
+                            }
+                            is AdminUnlock.Result.Wrong ->
+                                unlockError = "Wrong code. ${result.attemptsLeft} attempt(s) left."
+                            is AdminUnlock.Result.Locked ->
+                                unlockError = "Too many attempts. Try again in ${result.seconds}s."
+                        }
+                    }) { Text("Unlock", color = RsColors.Emerald) }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        adminUnlock.lock()
+                        unlockTick++
+                        showUnlockDialog = false
+                    }) { Text("Lock", color = RsColors.TextMuted) }
+                },
+            )
         }
+
+        if (showChangeCodeDialog) {
+            AlertDialog(
+                onDismissRequest = { showChangeCodeDialog = false },
+                containerColor = RsColors.Navy,
+                title = { Text("Change admin code") },
+                text = {
+                    Column {
+                        Text(
+                            if (adminUnlock.isUsingDefaultCode) {
+                                "You are still using the default unlock code. Replace it now."
+                            } else {
+                                "Choose a new code of at least 6 characters."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (adminUnlock.isUsingDefaultCode) RsColors.Warning else RsColors.TextSecondary,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        RsPasswordField(
+                            value = currentCode,
+                            onValueChange = { currentCode = it; codeChangeMessage = null },
+                            label = "Current code",
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        RsPasswordField(
+                            value = newCode,
+                            onValueChange = { newCode = it; codeChangeMessage = null },
+                            label = "New code",
+                        )
+                        codeChangeMessage?.let {
+                            Spacer(Modifier.height(8.dp))
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = RsColors.Danger)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val error = adminUnlock.changeCode(currentCode, newCode)
+                        if (error == null) {
+                            codeChangeMessage = null
+                            currentCode = ""
+                            newCode = ""
+                            showChangeCodeDialog = false
+                        } else {
+                            codeChangeMessage = error
+                        }
+                    }) { Text("Save", color = RsColors.Emerald) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showChangeCodeDialog = false }) {
+                        Text("Cancel", color = RsColors.TextMuted)
+                    }
+                },
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+        SectionCard(
+            title = "Data source",
+            trailing = if (deviceMode) "on this device" else "server",
+        ) {
+            SegmentedRow(
+                options = listOf("device", "server"),
+                selected = if (deviceMode) "device" else "server",
+                onSelect = { option -> onSwitchEngine(option == "device") },
+                labels = { option -> if (option == "device") "This device" else "Server" },
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (deviceMode) {
+                    "Accounts, prices, signals, paper trading and the admin panel all run inside the app. " +
+                        "Prices are simulated and labelled as such, no Binance key is stored, and live trading is " +
+                        "impossible in this mode."
+                } else {
+                    "The app talks to your backend, which holds the Binance key and is the only component that can " +
+                        "sign a real order. URL: ${server.baseUrl()}"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = RsColors.TextMuted,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Switching engine signs you out, because a session belongs to one engine.",
+                style = MaterialTheme.typography.labelSmall,
+                color = RsColors.TextMuted,
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        SettingsRow(
+            icon = Icons.Filled.AdminPanelSettings,
+            title = if (adminAllowed) "Admin dashboard" else "Admin dashboard (locked)",
+            subtitle = if (adminAllowed) {
+                "Users, audit log, symbol filters, global kill switch"
+            } else {
+                if (isAdmin) "Server role: admin" else "Unlock with the on-device admin code"
+            },
+            accent = RsColors.Violet,
+        ) {
+            if (adminAllowed) onNavigate("admin") else showUnlockDialog = true
+        }
+        Spacer(Modifier.height(4.dp))
+        SettingsRow(
+            icon = Icons.Filled.Shield,
+            title = "Admin unlock code",
+            subtitle = if (adminUnlock.isUsingDefaultCode) {
+                "Still using the first-run code — change it"
+            } else {
+                "Hashed on this device (PBKDF2), 15-minute session"
+            },
+            accent = RsColors.Warning,
+        ) { showChangeCodeDialog = true }
 
         Spacer(Modifier.height(10.dp))
         SectionCard(title = "Trading & analysis") {
@@ -200,6 +371,7 @@ fun SettingsScreen(
         Spacer(Modifier.height(10.dp))
         SectionCard(title = "About") {
             StatRow("App version", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+            StatRow("Data source", if (deviceMode) "on this device (simulated)" else "backend", mono = false)
             StatRow("Backend", server.baseUrl(), mono = false)
             StatRow(
                 "Backend source",

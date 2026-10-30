@@ -70,70 +70,106 @@ fun AuthScreen(viewModel: AuthViewModel) {
 
     val context = LocalContext.current
     val serverConfig = remember(context) { ServerConfig(context) }
-    var showServerDialog by remember { mutableStateOf(false) }
+    var showEngineDialog by remember { mutableStateOf(false) }
     var serverInput by remember { mutableStateOf(serverConfig.baseUrl()) }
     var serverError by remember { mutableStateOf<String?>(null) }
+    var deviceMode by remember { mutableStateOf(ServiceLocator.isDeviceMode) }
 
-    if (showServerDialog) {
+    val switchEngine: (Boolean) -> Unit = { device ->
+        if (device != ServiceLocator.isDeviceMode) {
+            ServiceLocator.switchDataSource(
+                context,
+                if (device) ServiceLocator.MODE_DEVICE else ServiceLocator.MODE_SERVER,
+            )
+            deviceMode = ServiceLocator.isDeviceMode
+            viewModel.clearMessages()
+            viewModel.bootstrap()
+        }
+    }
+
+    if (showEngineDialog) {
         AlertDialog(
-            onDismissRequest = { showServerDialog = false },
+            onDismissRequest = { showEngineDialog = false },
             containerColor = RsColors.Navy,
-            title = { Text("Backend server") },
+            title = { Text("Where does the data come from?") },
             text = {
                 Column {
-                    Text(
-                        "The app talks only to this server; your Binance keys never touch the phone. " +
-                            "Use http://<your-computer-IP>:8000/ for a phone on the same Wi-Fi, or your HTTPS domain.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = RsColors.TextSecondary,
+                    SegmentedRow(
+                        options = listOf("device", "server"),
+                        selected = if (deviceMode) "device" else "server",
+                        onSelect = { option -> switchEngine(option == "device") },
+                        labels = { option -> if (option == "device") "This device" else "Server" },
                     )
                     Spacer(Modifier.height(10.dp))
-                    RsTextField(
-                        value = serverInput,
-                        onValueChange = { serverInput = it; serverError = null },
-                        label = "Base URL",
-                        placeholder = "http://192.168.1.20:8000/",
-                        error = serverError,
-                        keyboardType = KeyboardType.Uri,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Default: ${ServiceLocator.buildTimeBaseUrl}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = RsColors.TextMuted,
-                    )
-                    if (ServerConfig.isPrivateHost(serverInput) && serverInput.startsWith("http://")) {
+                    if (deviceMode) {
                         Text(
-                            "Cleartext HTTP is allowed in debug builds only. A release build requires HTTPS.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = RsColors.Warning,
+                            "Everything — accounts, prices, signals, paper trading, the admin panel — runs inside the " +
+                                "app. Prices are simulated and labelled as such. No Binance key is needed and live " +
+                                "trading is impossible in this mode.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = RsColors.TextSecondary,
                         )
+                    } else {
+                        Text(
+                            "The app talks to your own backend, which stores the Binance key and is the only " +
+                                "component allowed to sign a real order. Use http://<your-computer-IP>:8000/ on a " +
+                                "phone in the same Wi-Fi, or your HTTPS domain.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = RsColors.TextSecondary,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        RsTextField(
+                            value = serverInput,
+                            onValueChange = { serverInput = it; serverError = null },
+                            label = "Server base URL",
+                            placeholder = "http://192.168.1.20:8000/",
+                            error = serverError,
+                            keyboardType = KeyboardType.Uri,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "Default: ${ServiceLocator.buildTimeBaseUrl}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = RsColors.TextMuted,
+                        )
+                        if (serverInput.startsWith("http://") && ServerConfig.isPrivateHost(serverInput)) {
+                            Text(
+                                "Cleartext HTTP is allowed in debug builds only. A release build requires HTTPS.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = RsColors.Warning,
+                            )
+                        }
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    val error = ServerConfig.validate(serverInput)
-                    if (error != null) {
-                        serverError = error
-                    } else {
+                    if (!deviceMode) {
+                        val error = ServerConfig.validate(serverInput)
+                        if (error != null) {
+                            serverError = error
+                            return@TextButton
+                        }
                         serverConfig.setBaseUrl(serverInput)
-                        ServiceLocator.reconfigure(context)
-                        viewModel.clearMessages()
-                        viewModel.bootstrap()
-                        showServerDialog = false
+                        ServiceLocator.switchDataSource(context, ServiceLocator.MODE_SERVER)
                     }
-                }) { Text("Save & reconnect", color = RsColors.Emerald) }
+                    deviceMode = ServiceLocator.isDeviceMode
+                    viewModel.clearMessages()
+                    viewModel.bootstrap()
+                    showEngineDialog = false
+                }) { Text("Use this", color = RsColors.Emerald) }
             },
             dismissButton = {
                 Row {
                     TextButton(onClick = {
                         serverConfig.reset()
-                        ServiceLocator.reconfigure(context)
                         serverInput = serverConfig.baseUrl()
                         serverError = null
-                    }) { Text("Use default", color = RsColors.TextMuted) }
-                    TextButton(onClick = { showServerDialog = false }) { Text("Cancel") }
+                        switchEngine(false)
+                        ServiceLocator.reconfigure(context)
+                        viewModel.bootstrap()
+                    }) { Text("Default server", color = RsColors.TextMuted) }
+                    TextButton(onClick = { showEngineDialog = false }) { Text("Cancel") }
                 }
             },
         )
@@ -245,7 +281,18 @@ fun AuthScreen(viewModel: AuthViewModel) {
                         onSelect = { language = it },
                         labels = { if (it == "en") "English" else "සිංහල" },
                     )
-                    Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        if (deviceMode) {
+                            "Accounts are created on this device and stored with a salted PBKDF2 hash. " +
+                                "No email is sent and nothing leaves the phone."
+                        } else {
+                            "The account is created on your backend with an Argon2id password hash."
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = RsColors.TextMuted,
+                    )
+                    Spacer(Modifier.height(14.dp))
                     PrimaryButton(
                         text = "Create account",
                         onClick = { viewModel.register(email, password, confirm, displayName, language) },
@@ -323,15 +370,21 @@ fun AuthScreen(viewModel: AuthViewModel) {
             }
             Spacer(Modifier.height(16.dp))
             Text(
-                "Server: ${ServiceLocator.server.baseUrl()}",
+                if (deviceMode) "Engine: on this device · simulated data · no server"
+                else "Engine: server · ${ServiceLocator.server.baseUrl()}",
                 style = MaterialTheme.typography.labelSmall,
                 color = RsColors.Emerald,
-                modifier = Modifier.clickable { showServerDialog = true },
+                modifier = Modifier.clickable { showEngineDialog = true },
             )
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
-                "Your Binance API keys are never entered here. They are added later under Settings → API connection " +
-                    "and stored encrypted on the backend.",
+                if (deviceMode) {
+                    "Tap the line above to connect a backend. Your Binance API keys are never entered in the app; " +
+                        "live trading needs a server that holds them."
+                } else {
+                    "Your Binance API keys are never entered here. They are added later under Settings → API " +
+                        "connection and stored encrypted on the backend."
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = RsColors.TextMuted,
             )

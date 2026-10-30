@@ -21,6 +21,20 @@ gradle wrapper --gradle-version 8.9 --distribution-type bin
 
 Android Studio generates the same files automatically when you open the project.
 
+## 1b. First run without any backend
+
+The app starts in **on-device mode**. Nothing has to be deployed:
+
+1. install the APK, complete onboarding;
+2. register an account (stored on the phone, PBKDF2 hashed);
+3. use every screen — markets, charts, signals, paper orders, analytics, alerts, assistant;
+4. **Settings → Admin dashboard** asks for the admin code; the first-run code is `RS2011`
+   (change it immediately in **Settings → Admin unlock code**);
+5. **Settings → Data source → Server** switches to a backend when you have one.
+
+On-device prices are simulated and labelled, API keys are refused, and live trading is impossible in
+that mode. Details: [`ON_DEVICE_MODE.md`](ON_DEVICE_MODE.md).
+
 ## 2. Where the backend URL lives
 
 `android-app/app/build.gradle.kts` reads the `rsaiBaseUrl` Gradle property and bakes it into
@@ -201,5 +215,6 @@ first install; the compile step is no longer a risk.
 3. Register a user (first registered user is **not** automatically admin; promote server-side per
    `docs/SECURITY.md`).
 4. Dashboard → markets → chart → AI signal; the connection pill shows the WebSocket state.
-5. Settings → AI mode stays **ANALYSIS ONLY**; paper trading is opt-in; live spot requires the
+5. Settings → Data source shows **on this device** until you switch it to your server
+6. Settings → AI mode stays **ANALYSIS ONLY**; paper trading is opt-in; live spot requires the
    server-side consent flow and is off by default.

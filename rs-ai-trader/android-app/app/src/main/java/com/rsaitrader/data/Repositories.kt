@@ -46,7 +46,7 @@ import com.rsaitrader.core.map
 import com.rsaitrader.core.network.safeCall
 import kotlinx.serialization.json.JsonElement
 
-class SessionRepository(private val api: ApiService, private val client: ApiClient) {
+class SessionRepository(private val api: ApiService, private val client: ApiClient) : SessionApi {
 
     val user: UserDto? get() = client.tokenStore.user()
     val isSignedIn: Boolean get() = client.tokenStore.isSignedIn()
@@ -103,22 +103,22 @@ class SessionRepository(private val api: ApiService, private val client: ApiClie
     }
 }
 
-class MarketRepository(private val api: ApiService) {
+class MarketRepository(private val api: ApiService) : MarketApi {
     suspend fun config(): ApiResult<AppConfigDto> = safeCall { api.appConfig() }
     suspend fun overview(): ApiResult<OverviewDto> = safeCall { api.overview() }
     suspend fun tickers(symbols: List<String>): ApiResult<List<TickerDto>> =
         safeCall { api.tickers(symbols.joinToString(",")) }
     suspend fun ticker(symbol: String): ApiResult<TickerDto> = safeCall { api.ticker(symbol) }
-    suspend fun klines(symbol: String, interval: String, limit: Int = 300): ApiResult<KlineResponse> =
+    suspend fun klines(symbol: String, interval: String, limit: Int): ApiResult<KlineResponse> =
         safeCall { api.klines(symbol, interval, limit) }
-    suspend fun depth(symbol: String, limit: Int = 15): ApiResult<DepthDto> = safeCall { api.depth(symbol, limit) }
+    suspend fun depth(symbol: String, limit: Int): ApiResult<DepthDto> = safeCall { api.depth(symbol, limit) }
     suspend fun trades(symbol: String): ApiResult<List<TradeTickDto>> = safeCall { api.recentTrades(symbol) }
     suspend fun pairs(): ApiResult<PairsResponse> = safeCall { api.pairs() }
     suspend fun health(): ApiResult<MarketHealthDto> =
         safeCall { api.appConfig() }.map { it.marketData }
 }
 
-class SignalRepository(private val api: ApiService) {
+class SignalRepository(private val api: ApiService) : SignalApi {
     suspend fun signal(symbol: String, timeframe: String): ApiResult<SignalDto> =
         safeCall { api.signal(symbol, timeframe) }
     suspend fun latest(symbol: String, timeframe: String): ApiResult<SignalDto> =
@@ -129,17 +129,17 @@ class SignalRepository(private val api: ApiService) {
     suspend fun backtestHistory(): ApiResult<List<JsonElement>> = safeCall { api.backtestHistory() }
 }
 
-class TradingRepository(private val api: ApiService) {
+class TradingRepository(private val api: ApiService) : TradingApi {
     suspend fun preview(body: OrderRequest): ApiResult<OrderPreviewDto> = safeCall { api.previewOrder(body) }
     suspend fun place(body: OrderCreateRequest): ApiResult<OrderDto> = safeCall { api.placeOrder(body) }
-    suspend fun orders(mode: String, openOnly: Boolean = false): ApiResult<List<OrderDto>> =
+    suspend fun orders(mode: String, openOnly: Boolean): ApiResult<List<OrderDto>> =
         safeCall { api.orders(mode, openOnly) }
     suspend fun cancel(id: String, mode: String): ApiResult<CancelResponse> =
         safeCall { api.cancelOrder(id, mode) }
     suspend fun reconcile(): ApiResult<JsonElement> = safeCall { api.reconcileOrders() }
 }
 
-class PortfolioRepository(private val api: ApiService) {
+class PortfolioRepository(private val api: ApiService) : PortfolioApi {
     suspend fun portfolio(mode: String): ApiResult<PortfolioDto> = safeCall { api.portfolio(mode) }
     suspend fun analytics(mode: String, days: Int): ApiResult<AnalyticsDto> =
         safeCall { api.analytics(mode, days) }
@@ -147,7 +147,7 @@ class PortfolioRepository(private val api: ApiService) {
         safeCall { api.resetPaper(startingEquity) }.map { }
 }
 
-class RiskRepository(private val api: ApiService) {
+class RiskRepository(private val api: ApiService) : RiskApi {
     suspend fun policy(): ApiResult<RiskPolicyDto> = safeCall { api.riskPolicy() }
     suspend fun updatePolicy(body: RiskPolicyUpdate): ApiResult<RiskPolicyDto> =
         safeCall { api.updateRiskPolicy(body) }
@@ -157,7 +157,7 @@ class RiskRepository(private val api: ApiService) {
     suspend fun emergencyStop(): ApiResult<JsonElement> = safeCall { api.emergencyStop() }
 }
 
-class AlertRepository(private val api: ApiService) {
+class AlertRepository(private val api: ApiService) : AlertApi {
     suspend fun alerts(): ApiResult<List<AlertDto>> = safeCall { api.alerts() }
     suspend fun create(symbol: String, condition: String, targetPrice: String?, note: String?): ApiResult<AlertDto> =
         safeCall { api.createAlert(AlertCreateRequest(symbol, condition, targetPrice, note)) }
@@ -165,15 +165,15 @@ class AlertRepository(private val api: ApiService) {
     suspend fun evaluate(): ApiResult<Unit> = safeCall { api.evaluateAlerts() }.map { }
 }
 
-class AssistantRepository(private val api: ApiService) {
+class AssistantRepository(private val api: ApiService) : AssistantApi {
     suspend fun ask(question: String, lang: String?, symbol: String?, timeframe: String?): ApiResult<AssistantAnswerDto> =
         safeCall { api.askAssistant(AssistantQuery(question, lang, symbol, timeframe)) }
 
-    suspend fun history(limit: Int = 50): ApiResult<List<com.rsaitrader.core.network.AssistantHistoryDto>> =
+    suspend fun history(limit: Int): ApiResult<List<com.rsaitrader.core.network.AssistantHistoryDto>> =
         safeCall { api.assistantHistory(limit) }
 }
 
-class CredentialRepository(private val api: ApiService) {
+class CredentialRepository(private val api: ApiService) : CredentialApi {
     suspend fun list(): ApiResult<CredentialListDto> = safeCall { api.credentials() }
     suspend fun add(apiKey: String, apiSecret: String, label: String): ApiResult<CredentialDto> =
         safeCall { api.addCredential(CredentialCreateRequest(apiKey.trim(), apiSecret.trim(), label)) }
@@ -181,13 +181,14 @@ class CredentialRepository(private val api: ApiService) {
     suspend fun revoke(id: String): ApiResult<Unit> = safeCall { api.revokeCredential(id) }
 }
 
-class NotificationRepository(private val api: ApiService) {
+class NotificationRepository(private val api: ApiService) : NotificationApi {
     suspend fun list(): ApiResult<List<NotificationDto>> = safeCall { api.notifications() }
     suspend fun markRead(): ApiResult<Unit> = safeCall { api.markNotificationsRead() }.map { }
 }
 
-class AdminRepository(private val api: ApiService) {
-    suspend fun users(search: String? = null) = safeCall { api.adminUsers(search) }
+class AdminRepository(private val api: ApiService) : AdminApi {
+    suspend fun users(search: String?): ApiResult<com.rsaitrader.core.network.AdminUsersResponse> =
+        safeCall { api.adminUsers(search) }
     suspend fun health() = safeCall { api.adminHealth() }
     suspend fun audit() = safeCall { api.adminAudit() }
     suspend fun settings() = safeCall { api.adminSettings() }

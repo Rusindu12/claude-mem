@@ -37,7 +37,7 @@ data class StreamStatus(
  * price update repaints every visible row without extra network calls.
  */
 class MarketFeed(
-    private val stream: PriceStream,
+    private val stream: PriceSource,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 

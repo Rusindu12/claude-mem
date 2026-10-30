@@ -197,6 +197,7 @@ private fun RsAiTraderNavHost(
     user: com.rsaitrader.core.network.UserDto,
     authViewModel: AuthViewModel,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val symbols = remember {
         (ServiceLocator.favorites.favorites() + listOf("BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"))
             .distinct()
@@ -312,15 +313,26 @@ private fun RsAiTraderNavHost(
             val vm: AppSettingsViewModel = viewModel()
             SettingsScreen(
                 viewModel = vm,
-                isAdmin = user.role == "admin",
+                isAdmin = user.role == "admin" || ServiceLocator.adminUnlock.isUnlocked,
                 onNavigate = { route -> navController.navigate(route) },
                 onLogout = { authViewModel.logout() },
+                deviceMode = ServiceLocator.isDeviceMode,
+                onSwitchEngine = { device ->
+                    ServiceLocator.switchDataSource(context, if (device) ServiceLocator.MODE_DEVICE else ServiceLocator.MODE_SERVER)
+                    authViewModel.bootstrap()
+                },
             )
         }
 
         composable(Routes.ADMIN) {
-            val vm: AdminViewModel = viewModel()
-            AdminScreen(vm) { navController.popBackStack() }
+            val allowed = user.role == "admin" || ServiceLocator.adminUnlock.isUnlocked
+            if (!allowed) {
+                // Reached without unlocking: leave rather than showing a half-empty panel.
+                LaunchedEffect(Unit) { navController.popBackStack() }
+            } else {
+                val vm: AdminViewModel = viewModel()
+                AdminScreen(vm) { navController.popBackStack() }
+            }
         }
     }
 }

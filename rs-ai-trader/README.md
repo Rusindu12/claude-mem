@@ -187,6 +187,12 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 (Opening `android-app/` in Android Studio generates the wrapper and builds with the IDE run button.)
 
+**No server needed to try it.** A fresh install starts in *on-device mode*: accounts, market
+simulation, signals, paper trading, risk checks and the admin panel all run inside the APK. Open
+**Settings → Admin dashboard** and enter the first-run admin code `RS2011` (change it in
+**Settings → Admin unlock code**). Switch to a real backend at **Settings → Data source → Server**.
+
+See [`docs/ON_DEVICE_MODE.md`](docs/ON_DEVICE_MODE.md) for what that mode does and does not do.
 Full build/sign/install instructions, including release signing and physical-device networking:
 [`docs/ANDROID_BUILD.md`](docs/ANDROID_BUILD.md).
 
@@ -272,6 +278,7 @@ key rotation: [`docs/KEY_ROTATION.md`](docs/KEY_ROTATION.md).
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Docker and bare-metal deployment, env vars, migrations, backups, monitoring |
 | [`docs/TESTNET.md`](docs/TESTNET.md) | Binance testnet workflow, key creation, verification, promotion to live |
 | [`docs/ANDROID_BUILD.md`](docs/ANDROID_BUILD.md) | Android Studio / CLI build, debug + release signing, APK installation |
+| [`docs/ON_DEVICE_MODE.md`](docs/ON_DEVICE_MODE.md) | Serverless on-device engine, admin unlock code, what is simulated and why keys are refused |
 | [`docs/KEY_ROTATION.md`](docs/KEY_ROTATION.md) | Rotating `SECRET_KEY`, `APP_ENCRYPTION_KEY` and Binance keys |
 | [`docs/LIVE_TRADING_SAFETY.md`](docs/LIVE_TRADING_SAFETY.md) | Go-live checklist, kill-switch drills, incident response |
 | [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) | Unverified paths, demo-data caveats, roadmap gaps |
@@ -288,8 +295,11 @@ key rotation: [`docs/KEY_ROTATION.md`](docs/KEY_ROTATION.md).
 * **The assistant is rule-based** (`ASSISTANT_LLM_ENABLED=false` by default). It answers from
   computed facts, refuses to place orders, and flags missing/stale data rather than inventing
   balances.
-* **Android is not compile-verified in this environment** (no JDK/SDK). Treat the first local build
-  as the real compile check.
+* **The APK is compile-verified in CI** (GitHub Actions `Android APK` workflow). Runtime has not been
+  exercised on a physical device or emulator yet.
+* **On-device mode is a simulation.** With no backend the app generates prices and candles locally and
+  labels them `synthetic`; paper results there say nothing about live performance, and live trading
+  is impossible by construction.
 * **No futures, margin, leverage or borrowing**, by design and by validation.
 
 Full list: [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md).

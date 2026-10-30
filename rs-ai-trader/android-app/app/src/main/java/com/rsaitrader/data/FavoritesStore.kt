@@ -37,6 +37,15 @@ class FavoritesStore(context: Context) {
 
     fun onboardingDone(): Boolean = prefs.getBoolean(KEY_ONBOARDING, false)
 
+    /**
+     * Where data comes from: "device" (built-in on-device engine, no server) or
+     * "server" (the authenticated backend). Defaults to on-device so a fresh
+     * install works with no infrastructure.
+     */
+    fun dataSource(): String = prefs.getString(KEY_DATA_SOURCE, "device") ?: "device"
+
+    fun setDataSource(source: String) = prefs.edit { putString(KEY_DATA_SOURCE, source) }
+
     fun setOnboardingDone(done: Boolean) = prefs.edit { putBoolean(KEY_ONBOARDING, done) }
 
     private companion object {
@@ -44,6 +53,7 @@ class FavoritesStore(context: Context) {
         const val KEY_LANGUAGE = "assistant_language"
         const val KEY_LAST_SYMBOL = "last_symbol"
         const val KEY_ONBOARDING = "onboarding_done"
+        const val KEY_DATA_SOURCE = "data_source"
         val DEFAULT = listOf("BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT")
     }
 }
