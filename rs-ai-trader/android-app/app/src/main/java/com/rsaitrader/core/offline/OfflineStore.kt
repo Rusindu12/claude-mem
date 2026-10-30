@@ -154,9 +154,12 @@ data class OfflineState(
  * state, and every accessor is synchronized because the paper engine is called
  * from several coroutines.
  */
-class OfflineStore(context: Context) {
+class OfflineStore private constructor(private val file: File) {
 
-    private val file = File(context.applicationContext.filesDir, "rsai_offline_state.json")
+    /** App-private state file used by the shipping app. */
+    constructor(context: Context) : this(
+        File(context.applicationContext.filesDir, "rsai_offline_state.json"),
+    )
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -235,5 +238,8 @@ class OfflineStore(context: Context) {
 
     companion object {
         fun newId(): String = java.util.UUID.randomUUID().toString()
+
+        /** Test/JVM entry point: backed by any file, no Android framework needed. */
+        fun forFile(file: File): OfflineStore = OfflineStore(file)
     }
 }
