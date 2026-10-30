@@ -64,6 +64,12 @@ own rule is that secrets live in the backend's encrypted store only, so the
 on-device engine declines to accept a key at all and tells you how to deploy the
 backend instead. See [`SECURITY.md`](SECURITY.md) and [`TESTNET.md`](TESTNET.md).
 
+## Tests
+
+`android-app/app/src/test/java/com/rsaitrader/core/offline/` contains 17 JVM unit tests for this engine
+(11 for the paper/risk rules, 6 for the simulator, indicators and signal honesty). They run in CI with
+`:app:testDebugUnitTest`; the last run had no failures.
+
 ## Limitations of on-device mode
 
 * Prices are simulated — never trade real money based on them.

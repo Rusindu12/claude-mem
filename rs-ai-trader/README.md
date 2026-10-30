@@ -233,6 +233,9 @@ cd backend && RSAI_TEST_DATABASE_URL="postgresql+psycopg://postgres@localhost/rs
 | `backend/tests/test_portfolio_alerts_assistant_admin.py` | 25 | Portfolio maths, CSV export, alerts, assistant grounding/refusal, admin-only access |
 | `ai-engine/tests/test_engine.py` | 21 | Indicators, regime, signal schema, cost-aware backtest, leakage checks, model gating |
 | `backend/tests/test_postgres_integration.py` | 1 | Full flow against a **real PostgreSQL** server (JSON, timestamptz, numeric round-trip) |
+| `android-app/app/src/test/.../OfflinePaperEngineTest.kt` | 11 | On-device paper/risk engine: fills net of fee+slippage, live orders impossible, notional cap, required stop-loss, idempotent replay, unapproved order, realised P&L, kill switch, duplicate working order, cancellation, analytics |
+| `android-app/app/src/test/.../OfflineEngineTest.kt` | 6 | Simulator determinism, candle consistency, indicator values, honest signal schema (no invented probability), backtest metrics |
+| `android-app/app/src/test/.../FmtTest.kt` | 3 | Number/price formatting |
 
 **Verification status (honest):**
 
@@ -244,9 +247,11 @@ cd backend && RSAI_TEST_DATABASE_URL="postgresql+psycopg://postgres@localhost/rs
 | `database/schema.sql` applied to a fresh database | ✅ executed — 19 tables, 57 indexes, 15 FKs |
 | SQLite-backed API tests | ✅ executed (in-memory, real route stack) |
 | Live Binance REST/WebSocket calls | ❌ not executed — the build environment cannot reach `api.binance.com`; every exchange test uses a mocked transport |
-| Android compile / APK build / install | ❌ not executed — no JDK or Android SDK in the build environment; the Kotlin sources are unverified by a compiler |
+| Android compile + APK build | ✅ executed in GitHub Actions (`Android APK` workflow, runs `:app:assembleDebug` and uploads a ~19 MB debug APK artifact) |
+| Android unit tests (Kotlin/JVM, 20 tests) | ✅ executed in CI (`:app:testDebugUnitTest`) — no failures |
+| Android install / run on a device or emulator | ❌ not executed — no device was available; treat the first install as the runtime check |
 | `docker compose up` | ❌ not executed — no Docker in the build environment (the database itself was verified with a real PostgreSQL 16.2 server) |
-| Android unit tests (`FmtTest`) | ❌ written but not executed — no JDK |
+
 
 Do not treat the Android build or the live-exchange path as proven until you run the commands in
 `docs/ANDROID_BUILD.md` and `docs/TESTNET.md` on a machine with a JDK and network access.
