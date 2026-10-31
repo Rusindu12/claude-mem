@@ -1,0 +1,17 @@
+# ==============================================================================
+# NEXORA AI — Expo Web Production Bundle Dockerfile
+# ==============================================================================
+FROM node:22-alpine AS web-builder
+WORKDIR /app/mobile
+
+COPY mobile/package*.json ./
+RUN npm install --legacy-peer-deps --no-audit --no-fund
+
+COPY mobile/ ./
+RUN npm run export:web
+
+FROM nginx:1.27-alpine
+COPY --from=web-builder /app/mobile/web-bundle /usr/share/nginx/html
+COPY infra/nginx/nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80 443
+CMD ["nginx", "-g", "daemon off;"]

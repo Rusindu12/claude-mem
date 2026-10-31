@@ -1,0 +1,43 @@
+name: Build NEXORA AI Web App & Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'nexora-ai/mobile/**'
+      - 'nexora-ai/android-apk-project/**'
+
+jobs:
+  build-web-and-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build Production Expo Web App Bundle
+        working-directory: nexora-ai/mobile
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://api.nexora.ai/api/v1' }}
+        run: |
+          npm install
+          npm run typecheck
+          npx expo export --platform web --output-dir web-bundle
+
+      - name: Upload Web App Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXORA-AI-WebApp
+          path: nexora-ai/mobile/web-bundle/

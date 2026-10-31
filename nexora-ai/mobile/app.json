@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "NEXORA AI",
+    "slug": "nexora-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#05050A"
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#05050A",
+      "barStyle": "light-content"
+    },
+    "android": {
+      "package": "com.nexora.ai",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#05050A"
+      },
+      "permissions": [
+        "INTERNET",
+        "RECORD_AUDIO",
+        "READ_MEDIA_IMAGES",
+        "VIBRATE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png",
+      "name": "NEXORA AI — Intelligence Without Limits",
+      "backgroundColor": "#05050A"
+    },
+    "extra": {
+      "tagline": "INTELLIGENCE WITHOUT LIMITS",
+      "apiBaseUrl": "https://api.nexora.ai/api/v1"
+    }
+  }
+}
