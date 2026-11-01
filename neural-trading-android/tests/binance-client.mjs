@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import { webcrypto } from 'node:crypto';
+import { createBinanceClient, hmacHex } from '../live/binance-client.mjs';
+// RFC 4231 HMAC-SHA256 test vector.
+assert.equal(await hmacHex('Jefe', 'what do ya want for nothing?', webcrypto.subtle), '5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843');
+const requests = [];
+const fetchImpl = async (url, opts) => { requests.push({ url, opts }); return {ok: true, status: 200, json: async () => ({orderId: 1})}; };
+const client = createBinanceClient({market:'spot', environment:'testnet', apiKey:'key', apiSecret:'secret', fetchImpl, clock:() => 1234, subtle:webcrypto.subtle});
+assert.deepEqual(await client.request('POST', '/api/v3/order/test', {symbol:'BTCUSDT', side:'BUY', type:'MARKET', quantity:'0.0001'}), {orderId:1});
+assert.equal(requests.length, 1);
+const url = new URL(requests[0].url);
+assert.equal(url.origin, 'https://testnet.binance.vision');
+assert.equal(url.searchParams.get('timestamp'), '1234');
+assert.equal(requests[0].opts.headers['X-MBX-APIKEY'], 'key');
+const sig = url.searchParams.get('signature'); url.searchParams.delete('signature');
+assert.equal(sig, await hmacHex('secret', url.searchParams.toString(), webcrypto.subtle));
+await assert.rejects(client.request('POST', '/api/v3/withdraw', {}), /not allowed/);
+await assert.rejects(client.request('POST', '/api/v3/order', {timestamp:0}), /Invalid parameter/);
+client.clear();
+await assert.rejects(client.request('GET', '/api/v3/account'), /cleared/);
+let calls = 0;
+const f = createBinanceClient({market:'futures', environment:'live', apiKey:'a', apiSecret:'b', subtle:webcrypto.subtle, fetchImpl:async () => { calls++; throw new Error('offline'); }});
+await assert.rejects(f.request('POST', '/fapi/v1/order', {symbol:'BTCUSDT'}), /unknown/);
+assert.equal(calls, 1);
+console.log('Binance signing, allowlist, failure and no-retry tests passed.');

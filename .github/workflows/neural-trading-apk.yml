@@ -1,0 +1,43 @@
+name: Build Neural Trading debug APK
+
+on:
+  push:
+    branches: ["arena/b1908515-claude-mem"]
+    paths:
+      - "neural-trading-android/**"
+      - ".github/workflows/neural-trading-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: neural-trading-android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Test JavaScript components
+        run: |
+          node tests/model-smoke.cjs
+          node tests/paper-engine.cjs
+          node tests/binance-client.mjs
+      - name: Build debug APK
+        run: gradle --no-daemon assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neural-trading-debug-apk
+          path: neural-trading-android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
