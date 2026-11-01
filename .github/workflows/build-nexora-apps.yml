@@ -51,8 +51,8 @@ jobs:
               # 3. Verify /api/v1/health
               st, health_raw = req("/api/v1/health")
               health = json.loads(health_raw)
-              assert st == 200 and health.get("status") in ("ok", "degraded"), f"Health failed: {health}"
-              note(f"3_HEALTH_OK db={health.get('checks', {}).get('database')}")
+              assert st == 200 and health.get("status") in ("healthy", "ok", "degraded"), f"Health failed: {health}"
+              note(f"3_HEALTH_OK status={health.get('status')} db={health.get('database')}")
 
               # 4. Verify Registration with Referral Code RS2011 -> 105 Credits!
               test_email = f"cloudcheck.{int(time.time())}@nexora.ai"
