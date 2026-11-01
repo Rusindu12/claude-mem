@@ -68,8 +68,8 @@ jobs:
               token = reg["accessToken"]
               st, wallet_raw = req("/api/v1/wallet", token=token)
               wallet = json.loads(wallet_raw)
-              assert wallet["totalAvailable"] >= 100, f"Unexpected wallet credits: {wallet}"
-              note(f"4_REGISTER_RS2011_OK credits={wallet['totalAvailable']}")
+              assert wallet["totalAvailableCredits"] >= 100, f"Unexpected wallet credits: {wallet}"
+              note(f"4_REGISTER_RS2011_OK credits={wallet['totalAvailableCredits']} free={wallet['freeCredits']} bonus={wallet['bonusCredits']}")
 
               # 5. Verify Authenticated Models & Real Free AI Streaming Chat
               st, models_raw = req("/api/v1/chat/models", token=token)

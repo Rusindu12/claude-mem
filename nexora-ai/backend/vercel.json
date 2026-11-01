@@ -1,13 +1,6 @@
 {
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 60,
-      "excludeFiles": "{node_modules/@electric-sql/**,node_modules/swagger-ui-dist/**,.pgdata*/**}"
-    }
-  },
+  "outputDirectory": "public",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index" },
-    { "source": "/download", "destination": "/api/index" },
-    { "source": "/downloads/(.*)", "destination": "/api/index" }
+    { "source": "/(.*)", "destination": "/api/index" }
   ]
 }
