@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
       run:
@@ -24,7 +24,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - name: Check preinstalled Android SDK
+        run: test -d "$ANDROID_HOME/platforms" && ls "$ANDROID_HOME/platforms"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
