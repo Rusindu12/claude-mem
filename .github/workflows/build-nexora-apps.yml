@@ -5,9 +5,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'nexora-ai/mobile/**'
-      - 'nexora-ai/android-apk-project/**'
+      - 'arena/fbfc6b1f-claude-mem'
 
 jobs:
   verify-live-cloud:
@@ -32,7 +30,7 @@ jobs:
           curl -sS -I https://nexora-ai-smoky-two.vercel.app/download | head -n 8
 
   build-web-and-apk:
-    if: github.event_name != 'workflow_dispatch'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
