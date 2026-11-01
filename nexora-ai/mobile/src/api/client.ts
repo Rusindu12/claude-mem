@@ -7,7 +7,7 @@ const REFRESH_TOKEN_KEY = 'nexora_refresh_token';
 const CUSTOM_API_URL_KEY = 'nexora_custom_api_url';
 
 const DEFAULT_APK_CLOUD_API_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'https://4000-ibivk1a4786q7bfnwh01l.e2b.app/api/v1';
+  process.env.EXPO_PUBLIC_API_URL || 'https://nexora-ai-smoky-two.vercel.app/api/v1';
 
 let runtimeCustomApiUrl: string | null = null;
 
@@ -120,7 +120,13 @@ class NexoraApiClient {
   async hydrateTokens(): Promise<boolean> {
     const savedCustomUrl = await getStoredItem(CUSTOM_API_URL_KEY);
     if (savedCustomUrl) {
-      runtimeCustomApiUrl = savedCustomUrl;
+      if (savedCustomUrl.includes('.e2b.app')) {
+        // Clear any expired temporary sandbox URL saved by an earlier APK version
+        runtimeCustomApiUrl = null;
+        await setStoredItem(CUSTOM_API_URL_KEY, null);
+      } else {
+        runtimeCustomApiUrl = savedCustomUrl;
+      }
     }
     this.accessToken = await getStoredItem(ACCESS_TOKEN_KEY);
     this.refreshToken = await getStoredItem(REFRESH_TOKEN_KEY);

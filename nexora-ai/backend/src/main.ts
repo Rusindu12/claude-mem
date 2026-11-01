@@ -82,20 +82,27 @@ export async function createNexoraApp() {
   ].filter(Boolean) as string[];
 
   const releasesDir = candidateReleaseDirs.find((d) => fs.existsSync(d));
+  const githubReleaseBase =
+    process.env.GITHUB_RELEASE_RAW_BASE ||
+    'https://github.com/Rusindu12/claude-mem/raw/arena/fbfc6b1f-claude-mem/nexora-ai/releases';
   const httpInstance = app.getHttpAdapter().getInstance();
-  httpInstance.use('/downloads', (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const dir = releasesDir || candidateReleaseDirs.find((d) => fs.existsSync(d));
-    if (!dir) return next();
+  httpInstance.use('/downloads', (req: express.Request, res: express.Response) => {
     const safeFile = path.basename(req.path || '');
-    const fullPath = path.join(dir, safeFile);
-    if (!safeFile || !fs.existsSync(fullPath)) return res.status(404).json({ message: 'Release file not found' });
-    if (safeFile.endsWith('.apk')) {
-      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-    } else if (safeFile.endsWith('.zip')) {
-      res.setHeader('Content-Type', 'application/zip');
+    if (!safeFile || !/^[A-Za-z0-9._-]+\.(apk|zip)$/i.test(safeFile)) {
+      return res.status(404).json({ message: 'Release file not found' });
     }
-    res.setHeader('Content-Disposition', `attachment; filename="${safeFile}"`);
-    return res.sendFile(fullPath);
+    const dir = releasesDir || candidateReleaseDirs.find((d) => fs.existsSync(d));
+    const fullPath = dir ? path.join(dir, safeFile) : '';
+    if (fullPath && fs.existsSync(fullPath)) {
+      if (safeFile.endsWith('.apk')) {
+        res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+      } else if (safeFile.endsWith('.zip')) {
+        res.setHeader('Content-Type', 'application/zip');
+      }
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFile}"`);
+      return res.sendFile(fullPath);
+    }
+    return res.redirect(302, `${githubReleaseBase}/${encodeURIComponent(safeFile)}`);
   });
 
   // Dedicated /download HTML Download Center page (works in any mobile/desktop browser & sandboxed preview)

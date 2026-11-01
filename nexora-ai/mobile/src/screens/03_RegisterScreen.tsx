@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { apiClient } from '../api/client';
+import { apiClient, getApiBaseUrl, setCustomApiBaseUrl } from '../api/client';
 import { useNexora } from '../context/NexoraContext';
 import { GlowCard, PrimaryButton, ScreenShell } from '../components/NexoraUI';
 
@@ -13,6 +13,9 @@ export const RegisterScreen: React.FC = () => {
   const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showServerCfg, setShowServerCfg] = useState(false);
+  const [serverInput, setServerInput] = useState(getApiBaseUrl());
+  const [serverSavedMsg, setServerSavedMsg] = useState<string | null>(null);
 
   const onSubmit = async () => {
     setError(null);
@@ -124,6 +127,51 @@ export const RegisterScreen: React.FC = () => {
               Already registered? Sign in →
             </Text>
           </TouchableOpacity>
+        </GlowCard>
+
+        <GlowCard>
+          <TouchableOpacity onPress={() => setShowServerCfg(!showServerCfg)}>
+            <Text style={{ color: theme.textSecondary, fontWeight: '800', fontSize: 12.5 }}>
+              ☁️ 24/7 Cloud Server ({getApiBaseUrl()}) {showServerCfg ? '▲' : '▼'}
+            </Text>
+          </TouchableOpacity>
+          {showServerCfg && (
+            <View style={{ marginTop: 10, gap: 8 }}>
+              <Text style={{ color: theme.textMuted, fontSize: 11.5 }}>
+                Connected to NEXORA AI 24/7 Production Cloud. You may also enter a custom domain URL if self-hosting:
+              </Text>
+              <TextInput
+                value={serverInput}
+                onChangeText={setServerInput}
+                autoCapitalize="none"
+                placeholder="https://nexora-ai-smoky-two.vercel.app/api/v1"
+                placeholderTextColor={theme.textMuted}
+                style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.bgSecondary }]}
+              />
+              {serverSavedMsg && (
+                <Text style={{ color: theme.success, fontSize: 12, fontWeight: '700' }}>{serverSavedMsg}</Text>
+              )}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <PrimaryButton
+                  label="Save Server URL"
+                  onPress={async () => {
+                    await setCustomApiBaseUrl(serverInput);
+                    setServerSavedMsg(`Connected to: ${getApiBaseUrl()}`);
+                  }}
+                  style={{ flex: 1 }}
+                />
+                <PrimaryButton
+                  label="Reset Default"
+                  variant="outline"
+                  onPress={async () => {
+                    await setCustomApiBaseUrl(null);
+                    setServerInput(getApiBaseUrl());
+                    setServerSavedMsg(`Reset to 24/7 Cloud: ${getApiBaseUrl()}`);
+                  }}
+                />
+              </View>
+            </View>
+          )}
         </GlowCard>
       </View>
     </ScreenShell>

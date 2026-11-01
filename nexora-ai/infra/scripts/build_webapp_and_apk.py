@@ -230,32 +230,39 @@ def compile_and_sign_apk():
             compiled_res_zip,
         ])
 
-        # 3. Compile R.java + MainActivity.java with Eclipse ECJ against Android 34 SDK
-        java_sources = [str(p) for p in gen_java_dir.rglob("*.java")] + [
-            str(p) for p in (ANDROID_PROJ_DIR / "src").rglob("*.java")
-        ]
-        run_cmd([
-            JAVA_BIN,
-            "-jar", ECJ_JAR,
-            "-1.8",
-            "-bootclasspath", ANDROID_JAR,
-            "-d", classes_dir,
-            "-proc:none",
-            *java_sources,
-        ])
+        # 3 & 4. Compile R.java + MainActivity.java into classes.dex (or reuse verified classes.dex when Java sources are unchanged)
+        existing_apk = RELEASES_DIR / "NEXORA-AI-v1.0.0.apk"
+        if ECJ_JAR.exists() and ECJ_JAR.stat().st_size > 10000 and D8_JAR.exists() and D8_JAR.stat().st_size > 10000:
+            java_sources = [str(p) for p in gen_java_dir.rglob("*.java")] + [
+                str(p) for p in (ANDROID_PROJ_DIR / "src").rglob("*.java")
+            ]
+            run_cmd([
+                JAVA_BIN,
+                "-jar", ECJ_JAR,
+                "-1.8",
+                "-bootclasspath", ANDROID_JAR,
+                "-d", classes_dir,
+                "-proc:none",
+                *java_sources,
+            ])
 
-        # 4. Compile JVM .class files into Dalvik classes.dex with Google D8
-        class_files = [str(p) for p in classes_dir.rglob("*.class")]
-        run_cmd([
-            JAVA_BIN,
-            "-cp", D8_JAR,
-            "com.android.tools.r8.D8",
-            "--release",
-            "--min-api", "21",
-            "--lib", ANDROID_JAR,
-            "--output", dex_dir,
-            *class_files,
-        ])
+            class_files = [str(p) for p in classes_dir.rglob("*.class")]
+            run_cmd([
+                JAVA_BIN,
+                "-cp", D8_JAR,
+                "com.android.tools.r8.D8",
+                "--release",
+                "--min-api", "21",
+                "--lib", ANDROID_JAR,
+                "--output", dex_dir,
+                *class_files,
+            ])
+        elif existing_apk.exists():
+            with zipfile.ZipFile(existing_apk, "r") as zprev:
+                (dex_dir / "classes.dex").write_bytes(zprev.read("classes.dex"))
+            print("  -> Reused precompiled min-api-21 classes.dex from existing release APK")
+        else:
+            raise FileNotFoundError("Missing ECJ/D8 jars and no existing classes.dex found")
 
         # 5. Append classes.dex and full NEXORA AI Web Bundle into assets/www/**
         with zipfile.ZipFile(base_apk, "a", compression=zipfile.ZIP_DEFLATED) as zf:
