@@ -10,7 +10,29 @@ on:
       - 'nexora-ai/android-apk-project/**'
 
 jobs:
+  verify-live-cloud:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify 24/7 Vercel + Supabase Production Cloud Endpoints
+        run: |
+          set -e
+          echo "=== 1. Testing Web App Root (/) ==="
+          curl -sS -D /tmp/h1.txt https://nexora-ai-smoky-two.vercel.app/ -o /tmp/b1.html
+          head -n 5 /tmp/h1.txt
+          head -n 10 /tmp/b1.html
+
+          echo "=== 2. Testing /api/v1/health ==="
+          curl -sS -i https://nexora-ai-smoky-two.vercel.app/api/v1/health
+
+          echo "=== 3. Testing /api/v1/chat/models ==="
+          curl -sS https://nexora-ai-smoky-two.vercel.app/api/v1/chat/models | head -c 600
+          echo ""
+
+          echo "=== 4. Testing /download ==="
+          curl -sS -I https://nexora-ai-smoky-two.vercel.app/download | head -n 8
+
   build-web-and-apk:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
