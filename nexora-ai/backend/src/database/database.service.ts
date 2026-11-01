@@ -1,6 +1,6 @@
 import { Injectable, Inject, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Pool } from 'pg';
-import { PGlite } from '@electric-sql/pglite';
+import type { PGlite } from '@electric-sql/pglite';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as bcrypt from 'bcryptjs';
@@ -58,17 +58,40 @@ export class DatabaseService implements DbQueryRunner, OnModuleInit, OnModuleDes
     const dbUrl = process.env.DATABASE_URL || 'pglite://./.pgdata-nexora';
     if (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://')) {
       this.driverType = 'pg';
-      this.pgPool = new Pool({
-        connectionString: dbUrl,
-        max: Number(process.env.DB_POOL_MAX || 25),
-        idleTimeoutMillis: 30_000,
-        connectionTimeoutMillis: 10_000,
-        ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
-      });
-      await this.pgPool.query('SELECT 1');
-      this.logger.log('Connected to PostgreSQL cluster via pg.Pool');
+      const useSsl =
+        process.env.DB_SSL === 'true' ||
+        dbUrl.includes('supabase.com') ||
+        dbUrl.includes('supabase.co') ||
+        dbUrl.includes('sslmode=require');
+
+      const candidateUrls = [dbUrl, process.env.DATABASE_URL_FALLBACK].filter(Boolean) as string[];
+      let lastErr: any = null;
+      for (const candidateUrl of candidateUrls) {
+        const pool = new Pool({
+          connectionString: candidateUrl,
+          max: Number(process.env.DB_POOL_MAX || (process.env.VERCEL ? 5 : 25)),
+          idleTimeoutMillis: 20_000,
+          connectionTimeoutMillis: 10_000,
+          ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+        });
+        try {
+          await pool.query('SELECT 1');
+          this.pgPool = pool;
+          this.logger.log('Connected to PostgreSQL cluster via pg.Pool');
+          break;
+        } catch (err: any) {
+          lastErr = err;
+          await pool.end().catch(() => undefined);
+        }
+      }
+      if (!this.pgPool) {
+        throw lastErr || new Error('Failed to connect to PostgreSQL');
+      }
     } else {
       this.driverType = 'pglite';
+      // Lazy-load @electric-sql/pglite only in embedded mode so cloud pg deployments stay lightweight
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { PGlite } = require('@electric-sql/pglite');
       const target = dbUrl.replace(/^pglite:\/\//, '');
       if (target === 'memory' || target === ':memory:') {
         this.pglite = new PGlite();
@@ -77,7 +100,7 @@ export class DatabaseService implements DbQueryRunner, OnModuleInit, OnModuleDes
         const resolvedDir = path.resolve(process.cwd(), target);
         fs.mkdirSync(path.dirname(resolvedDir), { recursive: true });
         this.pglite = new PGlite(resolvedDir);
-        await this.pglite.waitReady;
+        await this.pglite!.waitReady;
         this.logger.log(`Initialized embedded PostgreSQL 16 (PGlite disk: ${resolvedDir})`);
       }
     }
@@ -154,6 +177,10 @@ export class DatabaseService implements DbQueryRunner, OnModuleInit, OnModuleDes
   }
 
   async runMigrations(): Promise<void> {
+    if (process.env.SKIP_AUTO_MIGRATIONS === 'true') {
+      return;
+    }
+
     await this.execMultiStatement(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         filename VARCHAR(180) PRIMARY KEY,
@@ -168,6 +195,10 @@ export class DatabaseService implements DbQueryRunner, OnModuleInit, OnModuleDes
     ];
     const migrationsDir = candidates.find((d) => fs.existsSync(d));
     if (!migrationsDir) {
+      const applied = await this.query<{ cnt: number }>('SELECT COUNT(*)::int AS cnt FROM schema_migrations');
+      if ((applied.rows[0]?.cnt || 0) >= 8) {
+        return;
+      }
       throw new Error(`Database migrations directory not found. Checked: ${candidates.join(', ')}`);
     }
 
@@ -216,16 +247,22 @@ export class DatabaseService implements DbQueryRunner, OnModuleInit, OnModuleDes
       const rawKey = process.env[item.envVar];
       const customBaseUrl = item.baseUrlEnv ? process.env[item.baseUrlEnv] : undefined;
       if (rawKey && rawKey.trim().length > 0) {
-        const encrypted = this.cryptoService.encrypt(rawKey.trim());
-        await this.query(
-          `UPDATE ai_providers
-           SET api_key_encrypted = $1,
-               base_url = COALESCE($2, base_url),
-               health_status = 'HEALTHY',
-               updated_at = NOW()
-           WHERE code = $3`,
-          [encrypted, customBaseUrl || null, item.code],
+        const checkExisting = await this.query<{ has_key: boolean }>(
+          'SELECT (api_key_encrypted IS NOT NULL) AS has_key FROM ai_providers WHERE code = $1',
+          [item.code],
         );
+        if (checkExisting.rowCount > 0 && (!checkExisting.rows[0].has_key || !process.env.VERCEL)) {
+          const encrypted = this.cryptoService.encrypt(rawKey.trim());
+          await this.query(
+            `UPDATE ai_providers
+             SET api_key_encrypted = $1,
+                 base_url = COALESCE($2, base_url),
+                 health_status = 'HEALTHY',
+                 updated_at = NOW()
+             WHERE code = $3`,
+            [encrypted, customBaseUrl || null, item.code],
+          );
+        }
       }
     }
 
@@ -247,7 +284,7 @@ export class DatabaseService implements DbQueryRunner, OnModuleInit, OnModuleDes
         );
         if (ownerRole.rowCount > 0) {
           const passwordHash = await bcrypt.hash(ownerPassword, 12);
-          const referralCode = this.cryptoService.generateReferralCode();
+          const referralCode = process.env.OWNER_REFERRAL_CODE || 'RS2011';
           await this.withTransaction(async (tx) => {
             const userIns = await tx.query<{ id: string }>(
               `INSERT INTO users (email, password_hash, full_name, country_code, role_id, referral_code, is_email_verified)

@@ -39,8 +39,13 @@ export class StorageService {
 
   constructor(@Inject(DatabaseService) private readonly db: DatabaseService) {
     this.bucket = process.env.S3_BUCKET || 'nexora-uploads';
-    this.localRoot = path.resolve(process.cwd(), process.env.LOCAL_STORAGE_DIR || './.storage');
-    fs.mkdirSync(this.localRoot, { recursive: true });
+    const defaultDir = process.env.VERCEL ? '/tmp/nexora-storage' : './.storage';
+    this.localRoot = path.resolve(process.cwd(), process.env.LOCAL_STORAGE_DIR || defaultDir);
+    try {
+      fs.mkdirSync(this.localRoot, { recursive: true });
+    } catch {
+      // Read-only serverless root fallback
+    }
 
     if (process.env.S3_ENDPOINT && process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY) {
       this.s3Client = new S3Client({

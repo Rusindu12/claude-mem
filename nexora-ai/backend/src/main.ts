@@ -65,11 +65,13 @@ export async function createNexoraApp() {
     .addApiKey({ type: 'apiKey', name: 'X-API-Key', in: 'header' }, 'BusinessApiKey')
     .build();
 
-  try {
-    const document = SwaggerModule.createDocument(app, swaggerConfig);
-    SwaggerModule.setup('api/docs', app, document);
-  } catch {
-    // Under esbuild/vitest (where emitDecoratorMetadata is omitted), skip runtime reflection for OpenAPI
+  if (!process.env.VERCEL) {
+    try {
+      const document = SwaggerModule.createDocument(app, swaggerConfig);
+      SwaggerModule.setup('api/docs', app, document);
+    } catch {
+      // Under esbuild/vitest (where emitDecoratorMetadata is omitted), skip runtime reflection for OpenAPI
+    }
   }
 
   // Serve downloadable Release Artifacts (Signed Android APK + Production Web App ZIP) at /downloads/*
