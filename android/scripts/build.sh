@@ -43,11 +43,18 @@ fi
 if [ -z "${JAVA:-}" ] && [ -x "$ROOT/toolchain/jre/bin/java" ]; then
   JAVA="$ROOT/toolchain/jre/bin/java"      # JRE shipped next to the tools (optional)
 fi
+if [ -z "${KEYTOOL:-}" ] && [ -x "$(dirname "${JAVA:-/nonexistent/java}")/keytool" ]; then
+  KEYTOOL="$(dirname "$JAVA")/keytool"
+fi
+if [ ! -x "$AAPT2" ] || [ ! -f "$ANDROID_JAR" ]; then
+  echo "== toolchain missing — running scripts/fetch_toolchain.sh"
+  "$ROOT/scripts/fetch_toolchain.sh" >/dev/null
+fi
 if [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/javac" ]; then
   JAVA="$JAVA_HOME/bin/java"; JAVAC="$JAVA_HOME/bin/javac"; KEYTOOL="$JAVA_HOME/bin/keytool"
 elif command -v javac >/dev/null 2>&1; then
   JAVA="java"; JAVAC="javac"; KEYTOOL="keytool"
-elif [ -f "$ECJ_JAR" ] && { command -v java >/dev/null 2>&1 || [ -n "${JAVA:-}" ]; }; then
+elif [ -f "$ECJ_JAR" ] && [ -x "${JAVA:-}" ]; then
   # no JDK? the Eclipse compiler + any JRE (even a jlinked runtime without javac) is enough
   JAVA="${JAVA:-java}"; JAVAC=""; KEYTOOL="${KEYTOOL:-keytool}"
 elif command -v java >/dev/null 2>&1; then
@@ -154,6 +161,27 @@ if [ -f "$APKSIGNER_JAR" ]; then
 else
   cp "$UNSIGNED" "$OUT"
   echo "!! apksigner.jar not found — APK is UNSIGNED"
+fi
+
+# 7b. offline unit tests for the live-trading / signing layer
+if [ "${1:-}" = "--tests" ]; then
+  TCLASSES="$BUILD/test-classes"; JSONLIB="$BUILD/jsonlib"
+  mkdir -p "$TCLASSES" "$JSONLIB"
+  # the JVM test needs a real org.json (android.jar only carries stubs)
+  if [ ! -f "$JSONLIB/org/json/JSONObject.class" ]; then
+    [ -d "$ROOT/toolchain/json-src" ] || "$ROOT/scripts/fetch_toolchain.sh" >/dev/null
+    "$JAVA" -jar "$ECJ_JAR" -source 1.8 -target 1.8 -proc:none -nowarn \
+      -d "$JSONLIB" "$ROOT"/toolchain/json-src/*.java
+  fi
+  find "$APP/java" "$BUILD/gen" "$ROOT/app/src/test/java" -name '*.java' > "$BUILD/test-sources.txt"
+  if [ -n "$JAVAC" ]; then
+    "$JAVAC" -source 8 -target 8 -encoding UTF-8 -nowarn -Xlint:-options \
+      -classpath "$ANDROID_JAR" -d "$TCLASSES" @"$BUILD/test-sources.txt"
+  else
+    "$JAVA" -jar "$ECJ_JAR" -source 1.8 -target 1.8 -proc:none -nowarn -encoding UTF-8 \
+      -classpath "$ANDROID_JAR" -d "$TCLASSES" @"$BUILD/test-sources.txt"
+  fi
+  "$JAVA" -cp "$TCLASSES:$JSONLIB:$ANDROID_JAR" com.cryptoai.pro.LiveTradingTest
 fi
 
 # 8. self-check

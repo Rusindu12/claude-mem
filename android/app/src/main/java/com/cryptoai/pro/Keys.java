@@ -66,10 +66,9 @@ final class Keys {
         }
     }
 
+    /** Exchange host for the current mode; always derived from the testnet flag. */
     String base(String ex) {
-        if ("bybit".equals(ex)) {
-            return testnet(ex) ? "https://api-testnet.bybit.com" : "https://api.bybit.com";
-        }
-        return testnet(ex) ? "https://testnet.binance.vision" : "https://api.binance.com";
+        if ("bybit".equals(ex)) return Bybit.base(testnet(ex));
+        return Binance.base(testnet(ex));
     }
 }

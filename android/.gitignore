@@ -1,3 +1,4 @@
 # build scratch + local Android toolchain (android.jar, aapt2, d8, apksigner …)
 build/
 toolchain/
+tests/node_modules/

@@ -18,23 +18,17 @@ final class Binance {
 
     private Binance() {}
 
-    static String sign(Keys keys, String method, String path, String paramsJson) throws Exception {
-        String apiKey = keys.key("binance");
-        String secret = keys.secret("binance");
-        if (apiKey == null || apiKey.isEmpty() || secret == null || secret.isEmpty()) {
-            return "{\"error\":true,\"msg\":\"no Binance API keys saved\"}";
-        }
+    static final String MAINNET = "https://api.binance.com";
+    static final String TESTNET = "https://testnet.binance.vision";
 
-        TreeMap<String, String> p = new TreeMap<>();
-        if (paramsJson != null && !paramsJson.trim().isEmpty()) {
-            JSONObject o = new JSONObject(paramsJson);
-            Iterator<String> it = o.keys();
-            while (it.hasNext()) {
-                String k = it.next();
-                String v = o.optString(k, "");
-                if (v != null && !v.isEmpty()) p.put(k, v);
-            }
-        }
+    static String base(boolean testnet) {
+        return testnet ? TESTNET : MAINNET;
+    }
+
+    /** Builds a signed request (timestamp + recvWindow + HMAC-SHA256 signature). */
+    static Http.Req signedRequest(String apiKey, String secret, boolean testnet,
+                                  String method, String path, JSONObject params) throws Exception {
+        TreeMap<String, String> p = flatten(params);
         p.put("timestamp", String.valueOf(System.currentTimeMillis()));
         p.put("recvWindow", "10000");
 
@@ -43,23 +37,33 @@ final class Binance {
             if (qs.length() > 0) qs.append('&');
             qs.append(e.getKey()).append('=').append(URLEncoder.encode(e.getValue(), "UTF-8"));
         }
-        String sig = hmac(secret, qs.toString());
+        String q = qs + "&signature=" + hmac(secret, qs.toString());
 
-        String base = keys.base("binance");
-        String url;
-        String body = null;
-        String headers;
-        String q = qs + "&signature=" + sig;
-
-        if ("POST".equalsIgnoreCase(method)) {
-            url = base + path;
-            body = q;
-            headers = "{\"X-MBX-APIKEY\":\"" + apiKey + "\",\"Content-Type\":\"application/x-www-form-urlencoded\"}";
-        } else {
-            url = base + path + (path.contains("?") ? "&" : "?") + q;
-            headers = "{\"X-MBX-APIKEY\":\"" + apiKey + "\"}";
+        String base = base(testnet);
+        String headers = "{\"X-MBX-APIKEY\":\"" + apiKey + "\",\"Content-Type\":\"application/x-www-form-urlencoded\"}";
+        if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method)) {
+            // Binance accepts signed parameters in the body for POST; DELETE/PUT take them in the query.
+            if ("POST".equalsIgnoreCase(method)) {
+                return new Http.Req("POST", base + path, q, headers);
+            }
+            return new Http.Req(method.toUpperCase(), base + path + (path.contains("?") ? "&" : "?") + q, null, headers);
         }
-        return Http.send(method, url, body, headers);
+        return new Http.Req("GET", base + path + (path.contains("?") ? "&" : "?") + q,
+                null, "{\"X-MBX-APIKEY\":\"" + apiKey + "\"}");
+    }
+
+    static String sign(Keys keys, String method, String path, String paramsJson) {
+        String apiKey = keys.key("binance");
+        String secret = keys.secret("binance");
+        if (apiKey == null || apiKey.isEmpty() || secret == null || secret.isEmpty()) {
+            return "{\"error\":true,\"msg\":\"no Binance API keys saved\"}";
+        }
+        try {
+            JSONObject params = (paramsJson == null || paramsJson.trim().isEmpty()) ? new JSONObject() : new JSONObject(paramsJson);
+            return Http.send(signedRequest(apiKey, secret, keys.testnet("binance"), method, path, params)).body;
+        } catch (Exception e) {
+            return "{\"error\":true,\"msg\":" + JSONObject.quote(String.valueOf(e.getMessage())) + "}";
+        }
     }
 
     static String hmac(String secret, String data) throws Exception {
@@ -69,5 +73,19 @@ final class Binance {
         StringBuilder sb = new StringBuilder(out.length * 2);
         for (byte b : out) sb.append(String.format("%02x", b));
         return sb.toString();
+    }
+
+    static TreeMap<String, String> flatten(JSONObject o) {
+        TreeMap<String, String> p = new TreeMap<>();
+        if (o == null) return p;
+        Iterator<String> it = o.keys();
+        while (it.hasNext()) {
+            String k = it.next();
+            Object v = o.opt(k);
+            if (v == null || v == JSONObject.NULL) continue;
+            String s = String.valueOf(v);
+            if (!s.isEmpty()) p.put(k, s);
+        }
+        return p;
     }
 }

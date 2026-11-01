@@ -219,18 +219,55 @@ public class Bridge {
         return keys.status("bybit");
     }
 
+    /* -------------------------------------------------- live trading engine */
+
+    /** Signed request with a normalised, exchange-agnostic envelope. */
+    @JavascriptInterface
+    public String liveRequest(String exchange, String method, String path, String paramsJson) {
+        return LiveTrading.request(keys, exchange, method, path, paramsJson);
+    }
+
+    /** Balance check + key permissions + round-trip latency. */
+    @JavascriptInterface
+    public String exchangeTest(String exchange) {
+        return LiveTrading.selfTest(keys, exchange);
+    }
+
+    /** Idempotency key for order submission (retry-safe). */
+    @JavascriptInterface
+    public String clientOrderId(String prefix) {
+        return LiveTrading.clientId(prefix);
+    }
+
+    /** Device clock, so the page can warn about exchange timestamp drift. */
+    @JavascriptInterface
+    public long now() {
+        return System.currentTimeMillis();
+    }
+
+    /** Truthful mode: is the network layer on-device and are keys present? */
+    @JavascriptInterface
+    public String liveStatus() {
+        JSONObject o = new JSONObject();
+        try {
+            o.put("bridge", true);
+            o.put("version", BuildConfig.VERSION_NAME);
+            o.put("binanceKeys", keys.key("binance") != null && !keys.key("binance").isEmpty());
+            o.put("bybitKeys", keys.key("bybit") != null && !keys.key("bybit").isEmpty());
+            o.put("testnet", keys.testnet("binance") || keys.testnet("bybit"));
+        } catch (Exception ignored) {
+        }
+        return o.toString();
+    }
+
     /**
      * Signed exchange request. Params are sent as a JSON string; the request is
      * signed here, on the device, and the secret never reaches the web layer.
      */
     @JavascriptInterface
     public String signed(String exchange, String method, String path, String paramsJson) {
-        try {
-            if ("bybit".equals(exchange)) return Bybit.sign(keys, method, path, paramsJson);
-            return Binance.sign(keys, method, path, paramsJson);
-        } catch (Exception e) {
-            return err(e);
-        }
+        if ("bybit".equals(exchange)) return Bybit.sign(keys, method, path, paramsJson);
+        return Binance.sign(keys, method, path, paramsJson);
     }
 
     private static String err(Exception e) {

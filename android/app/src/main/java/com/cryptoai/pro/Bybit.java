@@ -2,7 +2,6 @@ package com.cryptoai.pro;
 
 import org.json.JSONObject;
 
-import java.net.URLEncoder;
 import java.util.Iterator;
 import java.util.TreeMap;
 
@@ -10,50 +9,31 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * Bybit v5 signing: HMAC-SHA256 over timestamp + apiKey + recvWindow + queryString,
- * sent with X-BAPI-* headers.
+ * Bybit v5 signing: HMAC-SHA256 over timestamp + apiKey + recvWindow + payload,
+ * sent with X-BAPI-* headers. JSON bodies are signed in ordered, compact form.
  */
 final class Bybit {
 
     private static final String RECV = "10000";
+    static final String MAINNET = "https://api.bybit.com";
+    static final String TESTNET = "https://api-testnet.bybit.com";
 
     private Bybit() {}
 
-    static String sign(Keys keys, String method, String path, String paramsJson) throws Exception {
-        String apiKey = keys.key("bybit");
-        String secret = keys.secret("bybit");
-        if (apiKey == null || apiKey.isEmpty() || secret == null || secret.isEmpty()) {
-            return "{\"error\":true,\"msg\":\"no Bybit API keys saved\"}";
-        }
+    static String base(boolean testnet) {
+        return testnet ? TESTNET : MAINNET;
+    }
 
-        TreeMap<String, String> params = new TreeMap<>();
-        if (paramsJson != null && !paramsJson.trim().isEmpty()) {
-            JSONObject o = new JSONObject(paramsJson);
-            Iterator<String> it = o.keys();
-            while (it.hasNext()) {
-                String k = it.next();
-                String v = o.optString(k, "");
-                if (v != null && !v.isEmpty()) params.put(k, v);
-            }
-        }
-
+    static Http.Req signedRequest(String apiKey, String secret, boolean testnet,
+                                  String method, String path, JSONObject params) throws Exception {
+        TreeMap<String, String> p = Binance.flatten(params);
         String ts = String.valueOf(System.currentTimeMillis());
-        boolean isPost = "POST".equalsIgnoreCase(method);
-        String payloadKey = isPost ? "json" : "query";
-        String payloadSb = canonical(params);
-        String qs = queryString(params);
-        String toSign = ts + apiKey + RECV + (payloadSb == null ? "" : payloadSb);
-        String sig = hmac(secret, toSign);
+        boolean body = "POST".equalsIgnoreCase(method);
+        String payload = body ? compact(p) : query(p);
+        String sig = hmac(secret, ts + apiKey + RECV + payload);
 
-        String base = keys.base("bybit");
-        String url;
-        String body = null;
-        if (isPost) {
-            url = base + path;
-            body = payloadSb == null ? "" : payloadSb;
-        } else {
-            url = base + path + (qs.isEmpty() ? "" : "?" + qs);
-        }
+        String base = base(testnet);
+        String url = body ? base + path : base + path + (payload.isEmpty() ? "" : "?" + payload);
         String headers = "{"
                 + "\"X-BAPI-API-KEY\":\"" + apiKey + "\","
                 + "\"X-BAPI-TIMESTAMP\":\"" + ts + "\","
@@ -61,11 +41,25 @@ final class Bybit {
                 + "\"X-BAPI-SIGN\":\"" + sig + "\","
                 + "\"X-BAPI-SIGN-TYPE\":\"2\","
                 + "\"Content-Type\":\"application/json\"}";
-        return Http.send(method, url, body, headers);
+        return new Http.Req(body ? "POST" : "GET", url, body ? payload : null, headers);
     }
 
-    /** Bybit signs JSON bodies in alphabetically ordered key form (no spaces). */
-    private static String canonical(TreeMap<String, String> p) {
+    static String sign(Keys keys, String method, String path, String paramsJson) {
+        String apiKey = keys.key("bybit");
+        String secret = keys.secret("bybit");
+        if (apiKey == null || apiKey.isEmpty() || secret == null || secret.isEmpty()) {
+            return "{\"error\":true,\"msg\":\"no Bybit API keys saved\"}";
+        }
+        try {
+            JSONObject params = (paramsJson == null || paramsJson.trim().isEmpty()) ? new JSONObject() : new JSONObject(paramsJson);
+            return Http.send(signedRequest(apiKey, secret, keys.testnet("bybit"), method, path, params)).body;
+        } catch (Exception e) {
+            return "{\"error\":true,\"msg\":" + JSONObject.quote(String.valueOf(e.getMessage())) + "}";
+        }
+    }
+
+    /** Bybit signs JSON bodies in alphabetically ordered, space-free form. */
+    private static String compact(TreeMap<String, String> p) {
         if (p.isEmpty()) return "";
         StringBuilder sb = new StringBuilder("{");
         for (java.util.Map.Entry<String, String> e : p.entrySet()) {
@@ -75,7 +69,7 @@ final class Bybit {
         return sb.append('}').toString();
     }
 
-    private static String queryString(TreeMap<String, String> p) {
+    private static String query(TreeMap<String, String> p) {
         StringBuilder sb = new StringBuilder();
         for (java.util.Map.Entry<String, String> e : p.entrySet()) {
             if (sb.length() > 0) sb.append('&');
@@ -91,5 +85,12 @@ final class Bybit {
         StringBuilder sb = new StringBuilder(out.length * 2);
         for (byte b : out) sb.append(String.format("%02x", b));
         return sb.toString();
+    }
+
+    /** Convenience for tests/tools: ordered string of the given params. */
+    static String canonical(JSONObject o) {
+        TreeMap<String, String> p = Binance.flatten(o);
+        Iterator<String> it = p.keySet().iterator();
+        return it.hasNext() ? compact(p) : "";
     }
 }
