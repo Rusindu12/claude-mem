@@ -8,7 +8,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.graphics.Color;
 
-/** Hosts the bundled paper-trading interface. No exchange-key bridge is exposed. */
+/** Hosts the bundled interface with a Testnet-only Spot bridge. */
 public class MainActivity extends Activity {
     private WebView webView;
 
@@ -31,6 +31,7 @@ public class MainActivity extends Activity {
                 return true; // Keep arbitrary pages out of this privileged WebView.
             }
         });
+        webView.addJavascriptInterface(new BinanceTestnetBridge(), "AndroidBridge");
         setContentView(webView);
         webView.loadUrl("file:///android_asset/index.html");
     }

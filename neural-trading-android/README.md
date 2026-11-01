@@ -2,7 +2,9 @@
 
 The Android project wraps the supplied CryptoAI PRO app and includes a small **trained experimental neural network** for BTC/USDT, ETH/USDT and SOL/USDT hourly spot candles. Select a supported pair and 1h in Chart, then open Signals. Model output is informational, and an optional experimental neural strategy is available in the paper bot (1h, BTC/ETH/SOL only). The other strategies are rule-based. The bot runs only while the app stays active. See `model/README.md` for training, source, and validation details. Its held-out accuracy was below a simple baseline; it is not suitable for real-money decisions.
 
-**Not implemented:** Binance Spot or Futures Testnet/live trading, secure exchange credentials, real-money automated neural trading, background operation and a release APK. No real orders can be placed through this browser wrapper. Public market data requires internet and may fall back to simulated data. Data and trading features have not been validated on a device. AI explanations optionally send a key to the selected third-party provider; the key is held in memory only.
+**Experimental:** The Android app now has an unverified, manual-only Binance Spot Testnet order bridge. Testnet credentials are held in memory for the session only. Testnet prices can differ from the public production chart; TP/SL is not attached to exchange orders. Never use production credentials in this build. The browser preview does not support exchange orders.
+
+**Not implemented:** Binance Futures, production live trading, automated exchange trading, persistent secure exchange credentials, background operation and a release APK. Public market data requires internet and may fall back to simulated data. Data and trading features have not been validated on a device. AI explanations optionally send a key to the selected third-party provider; the key is held in memory only.
 
 ## Build a debug APK
 

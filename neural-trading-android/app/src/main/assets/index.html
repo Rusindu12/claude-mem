@@ -306,9 +306,10 @@ nav .nb{position:absolute;top:4px;right:calc(50% - 22px);min-width:15px;height:1
 
     <!-- ============================== trade ============================= -->
     <section class="tab" id="t-trade">
+      <div class="hint" style="margin-bottom:8px;color:#f0b90b">Exchange orders: Binance Spot TESTNET only. Market charts may use production public data and do not represent Testnet prices. No automatic exchange trading. Testnet integration is unverified.</div>
       <div class="seg" id="modeSeg">
         <button data-mode="paper" class="on">📝 Paper</button>
-        <button data-mode="live">⚡ Live</button>
+        <button data-mode="live">⚡ Testnet</button>
       </div>
       <div class="card mt" id="balCard"><h3 data-i18n="trade.balance">Balance</h3><div id="balBody"></div></div>
       <div class="card">
@@ -422,7 +423,7 @@ nav .nb{position:absolute;top:4px;right:calc(50% - 22px);min-width:15px;height:1
       </div>
 
       <div class="card">
-        <h3 data-i18n="set.keys">API keys (live trading)</h3>
+        <h3 data-i18n="set.keys">Binance Spot Testnet API keys (session only)</h3>
         <label class="f"><span class="lb">API key</span><input id="setKey" autocomplete="off" spellcheck="false"></label>
         <label class="f"><span class="lb">API secret</span><input id="setSecret" type="password" autocomplete="off"></label>
         <div class="row">
@@ -1057,7 +1058,7 @@ const STR = {
     "set.haptic": "Haptic feedback", "set.tts": "Speak signals (TTS)", "set.keep": "Keep screen awake",
     "set.data": "Market data", "set.exchange": "Exchange (public data)", "set.testnet": "Testnet / demo keys",
     "set.exNote": "Public price data needs no account. Signals, chart and paper trading work without any key.",
-    "set.keys": "API keys (live trading)", "set.save": "Save", "set.test": "Test connection", "set.clear": "Delete keys",
+    "set.keys": "Binance Spot Testnet API keys (session only)", "set.save": "Save", "set.test": "Test connection", "set.clear": "Delete keys",
     "set.keyWarn": "Use keys with trading enabled and withdrawal DISABLED. Keys are stored in this app's private storage and only used to sign requests on your device.",
     "set.keySaved": "Keys saved", "set.keyOk": "Connection OK", "set.keyFail": "Connection failed",
     "set.noKeys": "No keys saved",
@@ -1179,7 +1180,7 @@ const TF_MIN = { "1m": 1, "5m": 5, "15m": 15, "1h": 60, "4h": 240, "1d": 1440 };
 const state = {
   tab: "markets",
   settings: {
-    lang: "en", exchange: "binance", testnet: false, sound: true, haptic: true, tts: false, keep: false,
+    lang: "en", exchange: "binance", testnet: true, sound: true, haptic: true, tts: false, keep: false,
     aiProvider: "off", aiKey: "", aiModel: "meta-llama/llama-3.3-70b-instruct:free", aiBase: "",
     liveMode: "paper",
   },
@@ -1345,7 +1346,7 @@ const exNow = () => EX[state.settings.exchange] || EX.binance;
 
 /* --------------------------------------------------------------- http layer */
 async function httpGet(url, headers) {
-  if (B) {
+  if (B && typeof B.httpGet === "function") {
     const r = B.httpGet(url, JSON.stringify(headers || {}));
     return checkBridgeReply(r, url);
   }
@@ -1355,7 +1356,7 @@ async function httpGet(url, headers) {
 }
 async function httpPost(url, body, headers) {
   const h = Object.assign({ "Content-Type": "application/json" }, headers || {});
-  if (B) {
+  if (B && typeof B.httpPost === "function") {
     const r = B.httpPost(url, body, JSON.stringify(h));
     return checkBridgeReply(r, url);
   }
@@ -2295,7 +2296,7 @@ function checkPaperPositions(sym, price) {
  * LIVE TRADING (signed on-device by the Kotlin bridge)
  * ========================================================================== */
 const liveEx = () => (state.settings.exchange === "bybit" ? "bybit" : "binance");
-const canTradeLive = () => hasBridge() && (state.settings.exchange === "binance" || state.settings.exchange === "bybit");
+const canTradeLive = () => !!(B && typeof B.binanceSigned === "function") && state.settings.exchange === "binance" && state.settings.testnet;
 
 async function liveCall(method, path, params) {
   const ex = liveEx();
@@ -2540,6 +2541,7 @@ async function placeOrder(side) {
   const sl = parseFloat($("ordSl").value) || 0;
   if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(qty) || qty <= 0 || tp < 0 || sl < 0) { toast(t("error") + ": " + t("trade.amount"), "bad"); return; }
   if (live && !canTradeLive()) { toast(t("live.unsupported"), "bad"); return; }
+  if (live && (tp || sl)) { toast("Testnet orders do not include TP/SL in this build.", "bad", 5000); return; }
 
   if (side === "SELL" && !isLimit) {
     // spot semantics: sell closes what you hold (paper: your long positions)
@@ -2589,9 +2591,9 @@ async function placeOrder(side) {
   };
 
   if (live) {
-    openOk(t("trade.confirmLive"),
+    openOk("Confirm Binance Spot TESTNET order",
       `<b>${side}</b> ${fmtQty(qty)} ${esc(state.sym.replace("USDT", "/USDT"))}<br>${isLimit ? "limit" : "market"} · ≈ ${fmtUsd(qty * price)}<br>
-       <span class="dn">${t("trade.liveNote")}</span>`, doIt);
+       <span class="dn">TESTNET only. TP/SL is not attached. The displayed quote may not match Testnet. Check exchange order status before any retry.</span>`, doIt);
   } else {
     doIt();
   }
@@ -2682,7 +2684,7 @@ function decide(rep, klines, strat, allowShort) {
 
 async function botTick() {
   const b = bot(), cfg = botCfg();
-  if (!b.running || b.ticking || document.hidden) return;
+  if (!b.running || b.ticking || document.hidden || state.settings.liveMode !== "paper") return;
   b.ticking = true;
   try {
   const lossSinceStart = paper().dayPnl - (b.dayStartPnl || 0);
@@ -2706,7 +2708,7 @@ async function botEvalSymbol(sym, cfg) {
   const cache = state.klinesCache[key];
   if (cache && now() - cache.at < 55000) klines = cache.candles;
   else klines = await fetchKlinesSmart(sym, cfg.tf, 300);
-  if (!b.running || document.hidden || !klines || klines.length < 60) return;
+  if (!b.running || document.hidden || state.settings.liveMode !== "paper" || !klines || klines.length < 60) return;
   const rep = TA.analyze(klines);
   if (!rep.ok) return;
   b.stats.signals++;
@@ -2795,6 +2797,7 @@ function botStart() {
   if (![cfg.size, cfg.tp, cfg.sl, cfg.maxPos, cfg.cooldown, cfg.dailyLoss].every(Number.isFinite) || cfg.size <= 0 || cfg.tp <= 0 || cfg.sl <= 0 || cfg.sl >= 100 || cfg.maxPos < 1 || !Number.isInteger(cfg.maxPos) || cfg.cooldown < 0 || cfg.dailyLoss <= 0) {
     toast("Check bot risk settings: enter positive size, TP, SL, loss limit and whole max positions.", "bad", 5000); return;
   }
+  if (state.settings.liveMode !== "paper") { toast("Automatic exchange trading is not supported; Testnet manual orders only.", "bad", 5000); return; }
   if (cfg.strategy === "neural" && (state.settings.liveMode !== "paper" || cfg.tf !== "1h" || cfg.symbols.some(s => !["BTCUSDT", "ETHUSDT", "SOLUSDT"].includes(s)))) {
     toast("Neural bot: paper only; select 1h and BTC, ETH or SOL.", "bad", 5000); return;
   }
@@ -2990,7 +2993,7 @@ function applyI18n() {
   tfSeg.querySelector('[data-t="market"]').textContent = t("trade.market");
   tfSeg.querySelector('[data-t="limit"]').textContent = t("trade.limit");
   document.querySelector('#modeSeg [data-mode="paper"]').textContent = t("trade.paper");
-  document.querySelector('#modeSeg [data-mode="live"]').textContent = t("trade.live");
+  document.querySelector('#modeSeg [data-mode="live"]').textContent = "Binance Spot Testnet";
   Array.from($("bStrat").options).forEach(o => { o.textContent = t("bot.strat." + o.value); });
   paintBotSymbols();
 }
@@ -3056,6 +3059,7 @@ function bindUI() {
 
   // trade
   document.querySelectorAll("#modeSeg [data-mode]").forEach((b) => b.onclick = () => {
+    if (bot().running) botStop();
     if (b.dataset.mode === "live" && !canTradeLive()) { toast(t("live.unsupported"), "bad"); return; }
     state.settings.liveMode = b.dataset.mode; save();
     if (b.dataset.mode === "live") refreshLiveOrders();
@@ -3104,6 +3108,8 @@ function bindUI() {
   // settings fields
   $("setLang").onchange = (e) => { state.settings.lang = e.target.value; save(); applyI18n(); renderAll(); paintSettings(); };
   $("setEx").onchange = async (e) => {
+    if (bot().running) botStop();
+    state.settings.liveMode = "paper";
     state.settings.exchange = e.target.value; save();
     toast(t("saved"), "ok");
     closeStream();
@@ -3120,11 +3126,7 @@ function bindUI() {
     $(id).classList.toggle("on", state.settings[k]); save();
     if (k === "keep") bc("setKeepScreenOn", state.settings[k]);
   });
-  $("setTestnet").onclick = () => {
-    state.settings.testnet = !state.settings.testnet;
-    $("setTestnet").classList.toggle("on", state.settings.testnet);
-    save(); paintKeyStatus();
-  };
+  $("setTestnet").onclick = () => { toast("Only Binance Spot Testnet is available in this build.", "bad", 4000); };
   $("setSaveKeys").onclick = () => {
     const k = $("setKey").value.trim(), s = $("setSecret").value.trim();
     if (!k || !s) { toast(t("set.noKeys"), "bad"); return; }
@@ -3179,7 +3181,8 @@ function init() {
   $("setEx").innerHTML = EX_IDS.map(v => `<option value="${v}">${EX[v].label}</option>`).join("");
   TA = (typeof window !== "undefined" && window.TA) || null;
   load();
-  if (!canTradeLive()) state.settings.liveMode = "paper";
+  state.settings.testnet = true;
+  state.settings.liveMode = "paper";
   if (!state.paper) state.paper = freshPaper();
   if (!state.botCfg) botCfg();
   if (TA) { /* engine ready */ } else { console.warn("ta.js missing"); }
