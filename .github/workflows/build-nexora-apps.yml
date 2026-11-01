@@ -11,23 +11,78 @@ jobs:
   verify-live-cloud:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify 24/7 Vercel + Supabase Production Cloud Endpoints
+      - name: Full E2E Smoke Verification of 24/7 Vercel + Supabase Cloud
         run: |
-          set -e
-          echo "=== 1. Testing Web App Root (/) ==="
-          curl -sS -D /tmp/h1.txt https://nexora-ai-smoky-two.vercel.app/ -o /tmp/b1.html
-          head -n 5 /tmp/h1.txt
-          head -n 10 /tmp/b1.html
+          python3 - << 'PY'
+          import json, time, urllib.request
 
-          echo "=== 2. Testing /api/v1/health ==="
-          curl -sS -i https://nexora-ai-smoky-two.vercel.app/api/v1/health
+          BASE = "https://nexora-ai-smoky-two.vercel.app"
 
-          echo "=== 3. Testing /api/v1/chat/models ==="
-          curl -sS https://nexora-ai-smoky-two.vercel.app/api/v1/chat/models | head -c 600
-          echo ""
+          def req(path, method="GET", body=None, token=None):
+              headers = {"User-Agent": "NexoraCloudVerifier/1.0"}
+              data = None
+              if body is not None:
+                  data = json.dumps(body).encode("utf-8")
+                  headers["Content-Type"] = "application/json"
+              if token:
+                  headers["Authorization"] = f"Bearer {token}"
+              r = urllib.request.Request(BASE + path, data=data, headers=headers, method=method)
+              with urllib.request.urlopen(r, timeout=45) as resp:
+                  raw = resp.read()
+                  return resp.status, raw
 
-          echo "=== 4. Testing /download ==="
-          curl -sS -I https://nexora-ai-smoky-two.vercel.app/download | head -n 8
+          # 1. Verify PWA Web App Root
+          st, html = req("/")
+          assert st == 200 and b"NEXORA AI" in html, f"Root failed: {st}"
+          print("1. Web App Root OK:", st, len(html), "bytes")
+
+          # 2. Verify /download & /downloads/NEXORA-AI-v1.0.0.apk
+          st, dl_html = req("/download")
+          assert st == 200 and b"NEXORA-AI-v1.0.0.apk" in dl_html, f"/download failed: {st}"
+          st_apk, apk_bytes = req("/downloads/NEXORA-AI-v1.0.0.apk")
+          assert st_apk == 200 and apk_bytes[:2] == b"PK" and len(apk_bytes) > 350000, f"APK failed: {st_apk}, len={len(apk_bytes)}"
+          print("2. APK Download OK:", st_apk, len(apk_bytes), "bytes")
+
+          # 3. Verify /api/v1/health & /api/v1/chat/models
+          st, health_raw = req("/api/v1/health")
+          health = json.loads(health_raw)
+          assert st == 200 and health.get("status") in ("ok", "degraded"), f"Health failed: {health}"
+          st, models_raw = req("/api/v1/chat/models")
+          models = json.loads(models_raw)
+          assert st == 200 and len(models) >= 6, f"Models failed: {len(models)}"
+          print("3. Health & Models OK:", len(models), "free models")
+
+          # 4. Verify Registration with Referral Code RS2011 -> 105 Credits!
+          test_email = f"cloudcheck.{int(time.time())}@nexora.ai"
+          st, reg_raw = req("/api/v1/auth/register", method="POST", body={
+              "fullName": "Cloud E2E Check",
+              "email": test_email,
+              "password": "CloudCheck#2026!",
+              "countryCode": "LK",
+              "preferredLanguage": "si",
+              "referralCode": "RS2011"
+          })
+          reg = json.loads(reg_raw)
+          token = reg["accessToken"]
+          st, wallet_raw = req("/api/v1/wallet", token=token)
+          wallet = json.loads(wallet_raw)
+          assert wallet["totalAvailable"] >= 100, f"Unexpected wallet credits: {wallet}"
+          print("4. Register + RS2011 Referral Wallet OK:", wallet["totalAvailable"], "credits")
+
+          # 5. Verify Real Free AI Streaming Chat (OpenRouter :free / Pollinations)
+          st, conv_raw = req("/api/v1/chat/conversations", method="POST", body={
+              "title": "Cloud E2E Test",
+              "selectedModelId": models[0]["id"]
+          }, token=token)
+          conv = json.loads(conv_raw)
+          st, sse_raw = req(f"/api/v1/chat/conversations/{conv['id']}/stream", method="POST", body={
+              "content": "Say hello in one short sentence.",
+              "modelId": models[0]["id"]
+          }, token=token)
+          sse_text = sse_raw.decode("utf-8", errors="ignore")
+          assert "event: done" in sse_text or "\"done\"" in sse_text or "data:" in sse_text, f"SSE failed: {sse_text[:300]}"
+          print("5. Live AI Stream OK! Sample:", sse_text[:200].replace("\n", " "))
+          PY
 
   build-web-and-apk:
     if: github.ref == 'refs/heads/main'
