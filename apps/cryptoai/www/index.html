@@ -1,0 +1,290 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0a0e17"><title>CryptoAI PRO</title><style>
+/* ============================== design tokens ============================= */
+:root{
+  --bg:#0a0e17; --bg2:#0e1421; --card:#121a2b; --card2:#16203a; --line:#1f2a42;
+  --txt:#e9eefb; --mut:#8394b4; --dim:#5b6a86;
+  --gold:#f0b90b; --up:#0ecb81; --dn:#f6465d; --ai:#8b5cf6; --info:#38bdf8;
+  --r:14px; --rs:10px;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overscroll-behavior:none}
+body{
+  background:var(--bg); color:var(--txt); font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Sinhala",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:#243050;border-radius:3px}
+
+/* ================================ shell ================================== */
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:640px;margin:0 auto;position:relative}
+.top{
+  display:flex;align-items:center;gap:8px;padding:calc(8px + var(--safe-t)) 12px 8px;
+  background:linear-gradient(180deg,#0d1424,#0a0e17);border-bottom:1px solid var(--line);z-index:5
+}
+.brand{display:flex;align-items:center;gap:7px;font-weight:800;letter-spacing:.2px;font-size:15px}
+.brand .pro{color:var(--gold)}
+.logo{
+  width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,var(--gold),#ff9f1c);
+  display:grid;place-items:center;font-size:13px;color:#1a1200;font-weight:900
+}
+.top .grow{flex:1}
+.conn{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mut);max-width:110px}
+.conn b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:0 0 auto;box-shadow:0 0 0 0 rgba(14,203,129,.6)}
+.dot.live{background:var(--up);animation:pulse 2s infinite}
+.dot.demo{background:var(--gold)}
+.dot.off{background:var(--dn)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(14,203,129,.5)}70%{box-shadow:0 0 0 7px rgba(14,203,129,0)}100%{box-shadow:0 0 0 0 rgba(14,203,129,0)}}
+.iconbtn{width:34px;height:34px;border-radius:10px;background:#141d31;border:1px solid var(--line);display:grid;place-items:center;font-size:15px}
+.iconbtn:active{transform:scale(.94)}
+.lbtn{font-size:11px;font-weight:700;padding:6px 9px;border-radius:9px;background:#141d31;border:1px solid var(--line);color:var(--gold)}
+
+main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:12px 12px 18px}
+.tab{display:none;animation:fade .18s ease}
+.tab.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ============================== ticker strip ============================= */
+.ticker{overflow:hidden;border-bottom:1px solid var(--line);background:#0b1120;height:28px;position:relative}
+.tick-track{display:flex;gap:18px;align-items:center;height:100%;white-space:nowrap;position:absolute;left:0;animation:slide 60s linear infinite}
+.tick-track.stop{animation-play-state:paused}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tk{font-size:11.5px;color:var(--mut);display:inline-flex;gap:5px}
+.tk b{color:var(--txt);font-weight:600}
+
+/* ================================ cards ================================= */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:10px}
+.card.tight{padding:9px 10px}
+.card h3{margin:0 0 9px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:var(--mut);font-weight:700}
+.row{display:flex;align-items:center;gap:8px}
+.row.wrap{flex-wrap:wrap}
+.row.between{justify-content:space-between}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mt{margin-top:10px}
+.mut{color:var(--mut)}.dim{color:var(--dim)}
+.up{color:var(--up)}.dn{color:var(--dn)}.gold{color:var(--gold)}
+.small{font-size:11.5px}.tiny{font-size:10.5px}
+.b{font-weight:700}.bb{font-weight:800}
+.mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.hint{font-size:11px;color:var(--dim);line-height:1.5}
+
+/* =============================== chips/btns ============================= */
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto;padding:7px 11px;border-radius:999px;background:#141d31;border:1px solid var(--line);
+  color:var(--mut);font-size:12px;font-weight:600;white-space:nowrap
+}
+.chip.on{background:rgba(240,185,11,.14);border-color:rgba(240,185,11,.45);color:var(--gold)}
+.chip.on.buy{background:rgba(14,203,129,.14);border-color:rgba(14,203,129,.4);color:var(--up)}
+.btn{padding:11px 14px;border-radius:12px;background:#182338;border:1px solid var(--line);font-weight:700;font-size:13px}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:linear-gradient(135deg,var(--gold),#ffa41b);color:#1a1200;border:0}
+.btn.ghost{background:#141d31;color:var(--mut)}
+.btn.buy{background:linear-gradient(135deg,#0ecb81,#0aa76a);color:#012a1b;border:0}
+.btn.sell{background:linear-gradient(135deg,#f6465d,#c9304a);color:#fff;border:0}
+.btn.sm{padding:8px 10px;font-size:12px;border-radius:10px}
+.btn.block{width:100%;display:block}
+.btn:disabled{opacity:.45}
+.btn .k{font-size:10px;display:block;font-weight:600;opacity:.85}
+
+/* =============================== market list ============================ */
+.mrow{display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:12px;background:var(--card);border:1px solid var(--line);margin-bottom:7px}
+.mrow:active{background:var(--card2)}
+.mrow .sym{min-width:74px}
+.mrow .sym b{display:block;font-size:13.5px}
+.mrow .sym span{font-size:10px;color:var(--dim)}
+.mrow .px{flex:1;text-align:right;font-size:14px;font-weight:700}
+.mrow .chg{width:74px;text-align:right;font-size:12px;font-weight:700;padding:4px 6px;border-radius:8px;background:rgba(14,203,129,.12);color:var(--up)}
+.mrow .chg.dn{background:rgba(246,70,93,.12);color:var(--dn)}
+.mrow canvas{width:52px;height:26px;flex:0 0 auto}
+.star{font-size:15px;color:#31405e}
+.star.on{color:var(--gold)}
+
+/* ================================= chart ================================ */
+.canvas-wrap{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:10px}
+#chart{display:block;width:100%;height:260px;touch-action:none}
+#rsiChart{display:block;width:100%;height:64px;border-top:1px solid var(--line)}
+#chartTip{
+  position:absolute;pointer-events:none;background:rgba(10,14,23,.92);border:1px solid var(--line);
+  border-radius:8px;padding:6px 8px;font-size:10.5px;line-height:1.5;display:none;z-index:3;min-width:104px
+}
+.chart-stats{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--mut);padding:0 2px 8px}
+.chart-stats b{color:var(--txt);font-weight:600}
+.badge{padding:5px 9px;border-radius:9px;font-size:12px;font-weight:700;background:rgba(14,203,129,.14);color:var(--up)}
+.badge.dn{background:rgba(246,70,93,.14);color:var(--dn)}
+.symbtn{display:flex;align-items:center;gap:6px;font-weight:800;font-size:16px;padding:6px 10px;background:var(--card);border:1px solid var(--line);border-radius:11px}
+
+/* ================================ signals =============================== */
+.verdict{border-radius:var(--r);padding:14px;text-align:center;border:1px solid var(--line);background:var(--card)}
+.verdict .v{font-size:22px;font-weight:900;letter-spacing:.5px}
+.verdict.buy{border-color:rgba(14,203,129,.35);background:linear-gradient(180deg,rgba(14,203,129,.14),var(--card))}
+.verdict.sell{border-color:rgba(246,70,93,.35);background:linear-gradient(180deg,rgba(246,70,93,.14),var(--card))}
+.verdict.neutral{border-color:rgba(131,148,180,.3)}
+.gauge{height:7px;border-radius:4px;background:#1b2540;overflow:hidden;margin-top:6px}
+.gauge i{display:block;height:100%;border-radius:4px}
+.reason{display:flex;gap:8px;padding:8px 0;border-bottom:1px dashed rgba(31,42,66,.9);font-size:12.5px}
+.reason:last-child{border-bottom:0}
+.reason .ic{flex:0 0 auto;font-size:13px}
+.reason .tx{color:#cfd9ee}
+.metric{background:#101728;border:1px solid var(--line);border-radius:var(--rs);padding:8px}
+.metric .k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px}
+.metric .v{font-size:14px;font-weight:700;margin-top:2px}
+.levels{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.lvl{background:#101728;border:1px solid var(--line);border-radius:var(--rs);padding:9px;text-align:center}
+.lvl .k{font-size:10px;color:var(--dim)}
+.lvl .v{font-size:15px;font-weight:800;margin-top:2px}
+.ai-out{font-size:13px;line-height:1.6;color:#d7e0f2;white-space:pre-wrap}
+.ai-out:empty{display:none}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid #33415f;border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ================================ trading =============================== */
+.seg{display:flex;background:#101728;border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;padding:9px;border-radius:9px;font-size:12.5px;font-weight:700;color:var(--mut)}
+.seg button.on{background:#1d2a45;color:var(--txt)}
+.seg button.on.buy{background:rgba(14,203,129,.18);color:var(--up)}
+.seg button.on.sell{background:rgba(246,70,93,.18);color:var(--dn)}
+label.f{display:block;margin-bottom:8px}
+label.f .lb{font-size:11px;color:var(--mut);margin-bottom:4px;display:block}
+input,select{
+  width:100%;padding:10px;border-radius:10px;background:#0e1626;border:1px solid var(--line);
+  font-size:14px;outline:none
+}
+input:focus,select:focus{border-color:rgba(240,185,11,.5)}
+input[type=number]{font-variant-numeric:tabular-nums}
+.pos{background:#101728;border:1px solid var(--line);border-radius:var(--rs);padding:10px;margin-bottom:7px}
+.pos .hd{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:700}
+.pos-list-note{margin-bottom:10px}
+.ai-target-panel{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:rgba(67,137,255,.05);overflow-wrap:anywhere}
+.ai-target-panel .row{gap:8px;flex-wrap:wrap}
+.ai-target-history summary{cursor:pointer;padding:6px 0;min-height:30px}
+.ai-target-change{padding:7px 0;border-top:1px dashed var(--line)}
+.pnl{font-weight:800}
+.pbar{height:5px;border-radius:3px;background:#1b2540;margin-top:8px;position:relative;overflow:hidden}
+.pbar span{position:absolute;top:0;bottom:0;border-radius:3px}
+.empty{text-align:center;color:var(--dim);font-size:12px;padding:14px 6px}
+table.kv{width:100%;font-size:12px;border-collapse:collapse}
+table.kv td{padding:4px 0;color:var(--mut)}
+table.kv td:last-child{text-align:right;color:var(--txt);font-weight:600}
+
+/* ================================= bot ================================== */
+.log{background:#080c15;border:1px solid var(--line);border-radius:var(--rs);padding:9px;height:190px;overflow-y:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.8px;line-height:1.6}
+.log div{white-space:pre-wrap;word-break:break-word}
+.log .t{color:#4a5a7a;margin-right:5px}
+.log .ok{color:var(--up)}.log .bad{color:var(--dn)}.log .warn{color:var(--gold)}.log .ai{color:#b79cff}
+.botdot{width:9px;height:9px;border-radius:50%;background:var(--dim);display:inline-block;margin-right:6px}
+.botdot.run{background:var(--up);animation:pulse 1.6s infinite}
+.switchrow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px dashed rgba(31,42,66,.8);font-size:13px}
+.switchrow:last-child{border-bottom:0}
+.sw{width:44px;height:25px;border-radius:999px;background:#25314e;position:relative;transition:.18s;flex:0 0 auto}
+.sw i{position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#8fa0c0;transition:.18s}
+.sw.on{background:rgba(14,203,129,.4)}
+.sw.on i{left:22px;background:var(--up)}
+
+/* ================================ nav =================================== */
+nav{display:flex;background:#0b1120;border-top:1px solid var(--line);padding-bottom:var(--safe-b);z-index:6}
+nav button{flex:1;padding:9px 2px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--dim);font-size:9.5px;font-weight:600;position:relative}
+nav button i{font-size:17px;font-style:normal;line-height:1}
+nav button.on{color:var(--gold)}
+nav button.on::before{content:"";position:absolute;top:0;width:26px;height:2px;border-radius:2px;background:var(--gold)}
+nav .nb{position:absolute;top:4px;right:calc(50% - 22px);min-width:15px;height:15px;border-radius:8px;background:var(--dn);color:#fff;font-size:9px;font-weight:700;display:grid;place-items:center;padding:0 3px}
+
+/* =============================== modals ================================= */
+.modal{position:fixed;inset:0;background:rgba(4,7,13,.72);backdrop-filter:blur(3px);display:none;z-index:50;align-items:flex-end}
+.modal.on{display:flex}
+.sheet{background:var(--bg2);border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;width:100%;max-width:640px;margin:0 auto;max-height:88vh;display:flex;flex-direction:column;animation:up .22s ease}
+@keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+.sheet .hd{display:flex;align-items:center;justify-content:space-between;padding:14px;border-bottom:1px solid var(--line)}
+.sheet .hd h3{margin:0;font-size:15px;color:var(--txt);text-transform:none;letter-spacing:0}
+.sheet .bd{padding:14px;overflow-y:auto;padding-bottom:calc(18px + var(--safe-b))}
+.toasts{position:fixed;left:0;right:0;bottom:calc(74px + var(--safe-b));display:flex;flex-direction:column;align-items:center;gap:7px;z-index:90;pointer-events:none}
+.toast{background:rgba(18,26,43,.97);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:11px;padding:9px 13px;font-size:12.5px;max-width:88%;box-shadow:0 8px 24px rgba(0,0,0,.5);animation:up .2s ease}
+.toast.ok{border-left-color:var(--up)}.toast.bad{border-left-color:var(--dn)}
+.grab{width:38px;height:4px;border-radius:3px;background:#2a3757;margin:8px auto 0}
+/* ----------------------- sysmgmt — System / Meheyuma engine ---------------- */
+.sm-chip{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.4px;vertical-align:middle}
+.sm-live{background:rgba(14,203,129,.14);color:var(--up);border:1px solid rgba(14,203,129,.4)}
+.sm-warn{background:rgba(240,185,11,.12);color:var(--gold);border:1px solid rgba(240,185,11,.4)}
+.sm-off{background:rgba(131,148,180,.12);color:var(--mut);border:1px solid var(--line)}
+.sm-ok{color:var(--up)} .sm-bad{color:var(--dn)} .sm-mid{color:var(--gold)}
+.sm-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px}
+.sm-stat{background:var(--card2);border:1px solid var(--line);border-radius:var(--rs);padding:8px 10px;text-align:center}
+.sm-stat b{display:block;font-size:14px} .sm-stat span{font-size:11px;color:var(--mut)}
+.sm-prow{display:grid;grid-template-columns:minmax(120px,1.4fr) 64px 1fr 42px 40px 74px 96px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.sm-prow:last-child{border-bottom:0}
+.sm-pname{display:flex;align-items:center;gap:8px;min-width:0}
+.sm-pname i{font-style:normal;font-size:17px}
+.sm-pname span{display:block;font-size:10px}
+.sm-pname b{font-size:12.5px}
+.sm-gauge{height:6px;border-radius:4px;background:var(--card2);overflow:hidden}
+.sm-gauge i{display:block;height:100%;background:linear-gradient(90deg,var(--up),var(--gold));border-radius:4px}
+.sm-cpu{font-size:11px;text-align:right}
+.sm-sel{background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:4px 6px;font-size:11.5px}
+.sm-act{display:flex;gap:4px;justify-content:flex-end}
+.sm-act button{background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:8px;min-width:30px;height:28px;font-size:13px;cursor:pointer}
+.sm-act button:active{border-color:var(--gold)}
+.sm-kv{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px}
+.sm-kv:last-child{border-bottom:0}
+.sm-kv .small{font-size:11px}
+.sm-log{max-height:150px;overflow:auto}
+.sm-spark{width:100%;height:64px;background:var(--card2);border:1px solid var(--line);border-radius:var(--rs);margin-top:6px}
+.sm-hist{display:flex;align-items:flex-end;gap:2px;height:28px}
+.sm-hist i{width:5px;background:var(--up);border-radius:2px;display:block;opacity:.85}
+.sm-hist i.bad{background:var(--dn)}
+@media(max-width:420px){.sm-prow{grid-template-columns:minmax(100px,1.3fr) 56px 1fr 70px;grid-auto-rows:auto}
+ .sm-prow .sm-sel,.sm-prow .sm-act{grid-column:auto}}
+.sm-lock{position:fixed;inset:0;background:rgba(5,8,14,.96);z-index:9999;display:none;align-items:center;justify-content:center}
+.sm-lock.on{display:flex}
+.sm-lockcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px 22px;width:min(88vw,320px);text-align:center}
+.sm-lockt{font-size:15px;font-weight:700;margin-top:8px;min-height:20px}
+.sm-pindots{display:flex;gap:10px;justify-content:center;margin:14px 0}
+.sm-pindots i{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--mut);display:block}
+.sm-pindots i.on{background:var(--gold);border-color:var(--gold)}
+.sm-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sm-key{height:52px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--txt);font-size:19px;font-weight:600;cursor:pointer}
+.sm-key:active{background:rgba(240,185,11,.15);border-color:var(--gold)}
+
+/* ============================ desktop (v50) ==============================
+   ≥1100px wide: the phone column becomes a dashboard — tabs in a left sidebar,
+   cards in two columns, a taller chart, markets in two columns. Phones and
+   tablets (<1100px) keep the exact phone layout above. */
+@media (min-width:1100px){
+  .app{display:grid;grid-template-columns:196px minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);
+       grid-template-areas:"top top" "tick tick" "nav main";max-width:1440px;
+       border-left:1px solid var(--line);border-right:1px solid var(--line)}
+  .top{grid-area:top;padding-left:18px;padding-right:18px}
+  .ticker{grid-area:tick}
+  main{grid-area:main;padding:16px 20px 26px;min-height:0}
+  nav{grid-area:nav;flex-direction:column;gap:4px;padding:14px 10px;border-top:0;border-right:1px solid var(--line);overflow-y:auto}
+  nav button{flex:0 0 auto;flex-direction:row;justify-content:flex-start;gap:12px;padding:11px 14px;border-radius:10px;font-size:13px;color:var(--mut)}
+  nav button i{font-size:18px}
+  nav button:hover{background:rgba(255,255,255,.04)}
+  nav button.on{background:rgba(240,185,11,.09)}
+  nav button.on::before{top:9px;bottom:9px;left:0;width:3px;height:auto}
+  nav .nb{top:50%;right:12px;transform:translateY(-50%)}
+  /* two-column card flow (masonry) — the first block of a tab spans both */
+  #t-signals.on,#t-trade.on,#t-bot.on,#t-sys.on{column-count:2;column-gap:14px}
+  #t-signals>*,#t-trade>*,#t-bot>*,#t-sys>*{break-inside:avoid}
+  #t-signals>.verdict,#t-trade>#modeSeg,#t-bot>.card.tight,#t-sys>.sm-head,#t-sys>.sm-procs-card{column-span:all;margin-bottom:12px}
+  .card.mt{margin-top:0}
+  #mList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:10px}
+  .toasts{bottom:24px}
+}
+@media (min-width:1600px){
+  #t-signals.on,#t-bot.on,#t-sys.on{column-count:3}
+  #mList{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+</style><style>.app{max-width:900px}main{padding-bottom:90px}.market-row{width:100%;display:flex;justify-content:space-between;padding:16px;border-bottom:1px solid var(--line);text-align:left}.notice{padding:12px;background:#30280d;color:#f0cf68;border-radius:10px;margin-bottom:14px}canvas{width:100%;height:250px}nav{flex-shrink:0}.up{color:var(--up)}.down{color:var(--dn)}.section{display:none}.section.on{display:block}input,select{width:100%}header{padding:18px;display:flex;justify-content:space-between;border-bottom:1px solid var(--line)}button:disabled{opacity:.45;cursor:not-allowed}#status{font-size:12px}.metric{padding:12px}dialog{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:14px;max-width:90%}</style></head><body><div class="app">
+<header><div class="brand"><span class="logo">₿</span> CryptoAI <span class="pro">PRO</span></div><span id="status" role="status">Connecting…</span></header>
+<main><div class="notice">Live market data · Paper execution only<br><small>සැබෑ මුදල් භාවිතා නොවේ. Signals are rules, not AI predictions or financial advice.</small></div>
+<section id="markets" class="section on"><div class="row between"><h2>Markets</h2><button id="refresh" class="btn ghost sm">↻ Refresh</button></div><input id="search" placeholder="Search BTC, ETH, SOL…" aria-label="Search markets"><div class="chips mt"><button class="chip on" data-sort="volume">Volume</button><button class="chip" data-sort="gainers">Gainers</button><button class="chip" data-sort="losers">Losers</button></div><div id="marketList"></div><p class="hint">Binance public spot data. No simulated prices. Internet and regional exchange availability required.</p></section>
+<section id="chart" class="section"><div class="row"><select id="symbol" aria-label="Market"></select><select id="interval" aria-label="Timeframe"><option>5m</option><option>15m</option><option>1h</option><option>4h</option><option>1d</option></select></div><h2 id="price">—</h2><div id="chartMessage" class="hint"></div><canvas id="candles" aria-label="Closing price chart"></canvas><div id="indicators" class="grid3"></div><div class="card mt"><h3>Rule-based analysis</h3><div id="signal">Waiting for completed candles…</div><p class="hint">EMA20/50 trend and RSI14. No win-rate or profit guarantees. Analysis excludes the open candle.</p></div><button class="btn primary block" data-page="trade">Open paper ticket →</button></section>
+<section id="trade" class="section"><h2>Paper trading</h2><div id="balance" class="card"></div><div class="card"><h3 id="ticket">BTCUSDT</h3><p class="hint">Spot market only · fee 0.1% · simulated slippage 0.05% per fill</p><label class="f">Quantity (coin)<input id="quantity" type="number" min="0" step="any" inputmode="decimal"></label><div class="grid2"><label class="f">Take profit %<input id="tp" type="number" value="3" min="0.1" step="0.1"></label><label class="f">Stop loss %<input id="sl" type="number" value="1" min="0.1" max="50" step="0.1"></label></div><p id="estimate" class="hint"></p><div class="grid2"><button id="buy" class="btn buy">Paper BUY</button><button id="sell" class="btn sell">Sell selected position</button></div><p class="hint">Maximum 1% of equity at stop and 25% of equity per entry. Stop fills can slip. TP/SL checks run only while this app is open and quotes are fresh.</p></div><h3>Positions</h3><div id="positions"></div><h3>Recent fills</h3><div id="history"></div></section>
+<section id="system" class="section"><h2>System & safety</h2><div class="card"><h3>Live order execution is locked</h3><p>This build does not collect exchange keys or send real orders. A secure backend, exchange permissions, order reconciliation and testnet validation are required before enabling real trading.</p><p>No background bot or 24/7 execution is claimed. Android may suspend this app.</p></div><div class="card"><h3>Data connection</h3><p id="health">Waiting…</p><button id="reconnect" class="btn ghost">Reconnect</button></div><div class="card"><h3>Local account</h3><p>Paper balances and fills are stored on this device only. Clearing app data removes them.</p><button id="export" class="btn ghost">Export paper history</button><button id="reset" class="btn ghost mt">Reset paper account</button></div></section>
+</main><nav><button class="on" data-page="markets">📈<br>Markets</button><button data-page="chart">🕯<br>Chart</button><button data-page="trade">💱<br>Paper</button><button data-page="system">⚙<br>System</button></nav></div><dialog id="message"><p id="messageText"></p><button class="btn primary" id="dismiss">OK</button></dialog><script type="module" src="app.js"></script></body></html>
