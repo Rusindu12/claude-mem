@@ -1,0 +1,9 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createHmac} from 'node:crypto';
+import {signedRequest,accountStatus,TARGETS} from '../server/exchanges.js';
+test('only four fixed testnet targets accepted',()=>{assert.equal(Object.keys(TARGETS).length,4);assert.throws(()=>signedRequest('https://evil.example','k','s'));assert.throws(()=>signedRequest('binance-spot','',''));});
+test('Binance query signature',()=>{const r=signedRequest('binance-spot','key','secret',123);const q='recvWindow=5000&timestamp=123';assert.equal(r.url,'https://testnet.binance.vision/api/v3/account?'+q+'&signature='+createHmac('sha256','secret').update(q).digest('hex'));assert.equal(r.headers['X-MBX-APIKEY'],'key');});
+test('Bybit Unified wallet signature',()=>{const r=signedRequest('bybit-futures','key','secret',123);assert.equal(r.headers['X-BAPI-SIGN'],createHmac('sha256','secret').update('123key5000accountType=UNIFIED').digest('hex'));assert.ok(r.url.startsWith('https://api-testnet.bybit.com/'));});
+test('account output does not contain credentials and execution is locked',async()=>{const env={BINANCE_SPOT_API_KEY:'sensitive-key',BINANCE_SPOT_API_SECRET:'sensitive-secret'};const data=await accountStatus('binance-spot',{env,fetcher:async(url,options)=>{assert.equal(options.method,'GET');return {ok:true,json:async()=>({canTrade:true,balances:[{asset:'USDT',free:'100',locked:'0'}]})};}});assert.equal(data.executionEnabled,false);assert.equal(data.balances[0].asset,'USDT');assert.ok(!JSON.stringify(data).includes('sensitive'));});
+test('exchange errors are sanitized',async()=>{await assert.rejects(accountStatus('bybit-spot',{env:{BYBIT_API_KEY:'k',BYBIT_API_SECRET:'s'},fetcher:async()=>({ok:true,json:async()=>({retCode:10003,retMsg:'secret echoed'})})}),/Exchange rejected testnet request/);});

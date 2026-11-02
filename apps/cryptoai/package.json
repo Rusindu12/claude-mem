@@ -1,1 +1,20 @@
-{"name":"cryptoai-pro","version":"1.0.0","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js","preview":"python3 -m http.server 4173 --bind 0.0.0.0 --directory www","android:add":"cap add android","android:sync":"cap sync android"},"dependencies":{"@capacitor/core":"^7.4.0","@capacitor/android":"^7.4.0"},"devDependencies":{"@capacitor/cli":"^7.4.0"}}
+{
+  "name": "cryptoai-pro",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "preview": "python3 -m http.server 4173 --bind 0.0.0.0 --directory www",
+    "android:add": "cap add android",
+    "android:sync": "cap sync android",
+    "backend": "node server/index.js"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.4.0",
+    "@capacitor/android": "^7.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.0"
+  }
+}

@@ -29,3 +29,18 @@ $('reset').onclick=()=>{if(confirm('Erase all paper positions and history and re
 $('export').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(account,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='cryptoai-paper.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 window.addEventListener('resize',draw);document.addEventListener('visibilitychange',()=>{if(!document.hidden){snapshot();connect();loadBars();}});
 setInterval(()=>{render();if(Date.now()-candleTime>60000)loadBars();},5000);setInterval(snapshot,10000);render();snapshot();connect();loadBars();
+
+// Exchange keys never enter this UI. Backend access token is not persisted.
+$('testnetCheck').onclick=async()=>{
+  const button=$('testnetCheck');button.disabled=true;$('testnetResult').textContent='Checking testnet…';
+  try{
+    const input=$('backendUrl').value.trim();let base='';
+    if(input){const url=new URL(input);if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||url.pathname!=='/')throw Error('Use a trusted HTTPS backend origin only (no path or credentials).');base=url.origin;}
+    const token=$('backendToken').value;if(token.length<32)throw Error('Enter the backend access token, not an exchange API key.');
+    const response=await fetch(base+'/api/testnet/account/'+encodeURIComponent($('testnetTarget').value),{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000),redirect:'error',cache:'no-store'});
+    let result;try{result=await response.json();}catch{throw Error('Backend not available. Deploy the supplied Node backend; the static preview cannot check accounts.');}
+    if(!response.ok)throw Error(result.error||'Backend request failed');
+    $('testnetResult').textContent=JSON.stringify(result,null,2);
+  }catch(e){$('testnetResult').textContent=e.message;}finally{button.disabled=false;}
+};
+document.addEventListener('visibilitychange',()=>{if(document.hidden){$('backendToken').value='';$('testnetResult').textContent='Hidden: access token and displayed account details cleared.';}});
