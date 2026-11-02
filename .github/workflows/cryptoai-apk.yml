@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: apps/cryptoai
@@ -23,7 +23,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - name: Use runner Android SDK
+        run: test -d "$ANDROID_HOME"
       - run: npm ci
       - run: npm test
       - run: npx cap add android && npx cap sync android
