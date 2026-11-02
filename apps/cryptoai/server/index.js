@@ -6,7 +6,7 @@ import {accountStatus,TARGETS} from './exchanges.js';
 const token=process.env.CRYPTOAI_BACKEND_TOKEN;
 if(!token||token.length<32)throw Error('Set CRYPTOAI_BACKEND_TOKEN to a random secret of at least 32 characters.');
 const allowed=new Set((process.env.CRYPTOAI_ALLOWED_ORIGINS||'https://localhost').split(',').map(x=>x.trim()));
-const files={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/engine.js':'engine.js'};
+const files={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/engine.js':'engine.js','/settings.js':'settings.js'};
 const types={html:'text/html; charset=utf-8',js:'text/javascript; charset=utf-8'};
 const recent=new Map();
 function authorized(req){const provided=Buffer.from(req.headers.authorization||''),expected=Buffer.from('Bearer '+token);return provided.length===expected.length&&timingSafeEqual(provided,expected);}

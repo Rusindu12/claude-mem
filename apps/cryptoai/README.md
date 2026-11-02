@@ -66,3 +66,17 @@ The GitHub APK workflow successfully built the earlier paper-only version in run
 ### Before auto execution can be enabled
 
 Need explicit per-trade USDT limit, total daily-loss USDT limit, allowed instruments and Futures leverage/margin mode. Then implement persistent order IDs/reconciliation, exchange precision/min-notional checks, protective exits/reduce-only handling, a server-side kill switch, and restart-safe daily limits. Validate in testnet before any production trading. These execution features are **not implemented** by the account connector.
+
+## Editable in-app risk settings
+
+Open **System → Trading risk settings** to edit and save:
+
+- Max entry cost including entry fees: 1–10,000 USDT (default 100).
+- Daily loss budget: 1–10,000 USDT (default 100), evaluated on UTC calendar days.
+- Futures leverage preference: integer 1–10× (default 1×). **Preference only**: no leveraged simulator, exchange leverage change or execution bot is implemented.
+
+Settings persist on this device separately from the paper account. Invalid stored settings fall back to defaults. Raising a limit or leverage asks for confirmation. Saving only applies to new entries; existing TP/SL is not changed. Restore defaults does not erase daily loss usage. Paper-account reset still clears all simulated account data, including loss accounting.
+
+Paper buys enforce the saved USDT entry cap alongside the existing 25% allocation / 1% stop-risk caps. Daily budget usage is gross realized losses today (profits do not offset losses) plus negative open liquidation P&L including estimated exit costs. New entries must fit their estimated stop loss inside the remaining budget. Open positions require fresh marks before allowing a new entry. Sells and TP/SL exits stay available even when the daily cap blocks buys. A daily ledger persists beyond the truncated history. This is a local simulator, not a tamper-resistant or server-side risk control. Losses can exceed the budget due to gaps; there is no forced liquidation at the daily cap.
+
+No API secrets are stored with settings and these settings are not sent to or enforced by Binance/Bybit. Exchange access remains read-only. Do not interpret the preference controls as real-money trading support.
