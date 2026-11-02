@@ -1,5 +1,10 @@
 name: CryptoAI Android APK
 on:
+  push:
+    branches: [arena/3fcac268-claude-mem]
+    paths:
+      - 'apps/cryptoai/**'
+      - '.github/workflows/cryptoai-apk.yml'
   workflow_dispatch:
 permissions:
   contents: read
