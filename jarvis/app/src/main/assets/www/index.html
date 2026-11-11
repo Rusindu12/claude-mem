@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#03080f">
+<title>J.A.R.V.I.S</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" data-state="idle">
+  <header>
+    <div class="brand">
+      <span class="dot"></span>
+      <div>
+        <h1>J.A.R.V.I.S</h1>
+        <p id="clock">--:--</p>
+      </div>
+    </div>
+    <div class="tools">
+      <button id="langBtn" class="chip" aria-label="Language">සිං</button>
+      <button id="handsBtn" class="chip icon" aria-label="Hands-free" title="Hands-free">
+        <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>
+      </button>
+      <button id="setBtn" class="chip icon" aria-label="Settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="stage">
+    <button id="orb" class="orb" aria-label="Talk">
+      <span class="ring r1"></span>
+      <span class="ring r2"></span>
+      <span class="ring r3"></span>
+      <span class="ticks"></span>
+      <span class="core"><span class="core-in"></span></span>
+    </button>
+    <p id="status" class="status"></p>
+  </section>
+
+  <main id="log" class="log" aria-live="polite"></main>
+
+  <div id="quick" class="quick"></div>
+
+  <footer>
+    <form id="form" autocomplete="off">
+      <input id="input" type="text" enterkeyhint="send">
+      <button id="sendBtn" type="submit" class="round" aria-label="Send">
+        <svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+      </button>
+      <button id="micBtn" type="button" class="round mic" aria-label="Microphone">
+        <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+    </form>
+  </footer>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <div id="sheet" class="sheet" hidden>
+    <div class="sheet-bg" data-close></div>
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <h2 data-t="settings"></h2>
+        <button class="chip icon" data-close aria-label="Close">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <label><span data-t="provider"></span>
+        <select id="sProvider">
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI-compatible (OpenAI / Groq / OpenRouter…)</option>
+        </select>
+      </label>
+      <label><span data-t="apiKey"></span>
+        <input id="sKey" type="password" placeholder="API key" spellcheck="false">
+        <small data-t="keyHelp"></small>
+      </label>
+      <label><span data-t="model"></span>
+        <input id="sModel" type="text" spellcheck="false">
+      </label>
+      <label id="sBaseWrap"><span>Base URL</span>
+        <input id="sBase" type="url" spellcheck="false" placeholder="https://api.openai.com/v1">
+      </label>
+      <label><span data-t="callMe"></span>
+        <input id="sName" type="text">
+      </label>
+      <label class="row"><span data-t="voiceReplies"></span>
+        <input id="sVoice" type="checkbox">
+      </label>
+      <div class="sheet-actions">
+        <button id="sClear" class="btn ghost" data-t="clearMemory"></button>
+        <button id="sSave" class="btn" data-t="save"></button>
+      </div>
+      <p class="fine" data-t="privacy"></p>
+    </div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
