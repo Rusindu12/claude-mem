@@ -56,6 +56,15 @@
       aOpen: '▸ {x} open කළා', aOpenFail: '▸ {x} හමු වුණේ නෑ', aSearch: '▸ සෙවීම: {x}', aYoutube: '▸ YouTube: {x}',
       aCall: '▸ ඇමතුම: {x}', aAlarm: '▸ Alarm: {x}', aTimer: '▸ Timer: තත්පර {x}', aMaps: '▸ Maps: {x}',
       aTorch: '▸ ටෝච්: {x}', aFail: '▸ {x} කරන්න බැරි වුණා',
+      aAgent: '▸ වැඩේ පටන් ගත්තා: {x}', aAgentBusy: '▸ දැනටමත් වැඩක් කරමින් ඉන්නවා', aAgentApp: '▸ දුරකථනය පාලනය කරන්න පුළුවන් Android app එකේ විතරයි',
+      agentGuide: 'ඒ වැඩේ කරන්න මට දුරකථනය පාලනය කරන්න අවසර ඕන, {name}.\n\n1. පහළ button එක ඔබන්න\n2. "Installed apps" / "Downloaded apps" යටතේ "J.A.R.V.I.S phone control" තෝරලා ON කරන්න\n3. "Restricted setting" කියලා ආවොත්: Settings → Apps → J.A.R.V.I.S → උඩ ⋮ → "Allow restricted settings" ඔබලා ආයෙත් උත්සාහ කරන්න\n\nඊට පස්සේ ආයෙත් මට වැඩේ කියන්න.',
+      openSettings: 'Accessibility settings open කරන්න',
+      agentWorking: 'වැඩේ කරමින්… (නවත්වන්න orb එක ඔබන්න)',
+      agentStopped: 'වැඩේ නැවැත්තුවා.',
+      agentSteps: 'පියවර සීමාව ඇතුළත වැඩේ ඉවර කරන්න බැරි වුණා, {name}. තිරය බලලා ඉතුරු ටික කියන්න.',
+      agentError: 'වැඩේ කරද්දී දෝෂයක් ආවා. ආයෙත් උත්සාහ කරන්න.',
+      phoneControl: 'දුරකථන පාලනය', phoneOn: 'ON', phoneEnable: 'සක්‍රිය කරන්න',
+      phoneControlHelp: 'ON කළාම, ඔබ කියන වැඩ (apps ඇතුළේ tap කිරීම, type කිරීම) ජාවිස් කරනවා. වැඩක් කරන අතරතුර තිරයේ තියෙන text AI සේවාවට යනවා. ගෙවීම්, password සහ මකා දැමීම් ජාවිස් කරන්නේ නැහැ.',
       quick: ['වෙලාව කීයද?', 'අද දවස මොකක්ද?', 'YouTube open කරන්න', 'විහිළුවක් කියන්න', 'බැටරිය කීයද?']
     },
     en: {
@@ -104,6 +113,15 @@
       aOpen: '▸ Opened {x}', aOpenFail: '▸ {x} not found', aSearch: '▸ Search: {x}', aYoutube: '▸ YouTube: {x}',
       aCall: '▸ Call: {x}', aAlarm: '▸ Alarm: {x}', aTimer: '▸ Timer: {x}s', aMaps: '▸ Maps: {x}',
       aTorch: '▸ Torch: {x}', aFail: '▸ Could not do {x}',
+      aAgent: '▸ Task started: {x}', aAgentBusy: '▸ Already working on a task', aAgentApp: '▸ Phone control only works in the Android app',
+      agentGuide: 'I need permission to control the phone for that, {name}.\n\n1. Tap the button below\n2. Under "Installed apps" / "Downloaded apps" choose "J.A.R.V.I.S phone control" and switch it ON\n3. If it says "Restricted setting": Settings → Apps → J.A.R.V.I.S → ⋮ at the top → "Allow restricted settings", then try again\n\nThen give me the task again.',
+      openSettings: 'Open Accessibility settings',
+      agentWorking: 'Working… (tap the orb to stop)',
+      agentStopped: 'Task stopped.',
+      agentSteps: 'I could not finish within the step limit, {name}. Check the screen and tell me what is left.',
+      agentError: 'Something went wrong during the task. Please try again.',
+      phoneControl: 'Phone control', phoneOn: 'ON', phoneEnable: 'Enable',
+      phoneControlHelp: 'When on, JARVIS carries out tasks for you inside apps (tapping, typing). During a task the on-screen text is sent to the AI provider. JARVIS will not make payments, enter passwords or delete things.',
       quick: ['What time is it?', "What's the date today?", 'Open YouTube', 'Tell me a joke', 'Battery level?']
     }
   };
@@ -126,6 +144,8 @@
   var lastWasVoice = false;
   var greeted = false;
   var busy = false;
+  var agentOn = false;
+  var lastUserText = '';
 
   function load(k, d) { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage full or blocked */ } }
@@ -143,7 +163,7 @@
   function setState(s, text) {
     state = s;
     app.dataset.state = s;
-    statusEl.textContent = text != null ? text : L()[s];
+    statusEl.textContent = text != null ? text : (s === 'idle' && agentOn ? L().agentWorking : L()[s]);
   }
   function addMsg(role, text, extra) {
     var el = document.createElement('div');
@@ -253,7 +273,7 @@
   }
   function afterSpeak() {
     setState('idle');
-    if (cfg.hands && lastWasVoice) setTimeout(function () { if (state === 'idle' && !busy) listen(); }, 350);
+    if (cfg.hands && lastWasVoice && !agentOn) setTimeout(function () { if (state === 'idle' && !busy) listen(); }, 350);
   }
 
   // Events from the native shell (or the browser fallbacks above).
@@ -282,6 +302,25 @@
         case 'tts_missing':
           toast(L().ttsMissing);
           break;
+        case 'agent_step':
+          if (agentOn && state === 'idle') statusEl.textContent = '⟳ ' + data;
+          break;
+        case 'agent_done': {
+          agentOn = false;
+          var r = {};
+          try { r = JSON.parse(data) || {}; } catch (e) { /* malformed result is treated as an error */ }
+          var ok = !!r.ok && !!r.message;
+          var msg = ok ? r.message
+            : r.code === 'cancelled' ? t('agentStopped')
+            : r.code === 'steps' ? t('agentSteps')
+            : /^http\d+$/.test(r.code || '') ? errorText({ status: +r.code.slice(4) })
+            : t('agentError');
+          addMsg(ok ? 'bot' : 'bot err', msg);
+          remember('bot', msg);
+          if (ok) { if (state === 'idle') setState('idle'); } // the native side already speaks a successful result
+          else if (state === 'idle') speak(msg);
+          break;
+        }
         case 'tts_ready':
           if (data === '1') greetAloud();
           break;
@@ -311,6 +350,19 @@
   function runAction(kind, arg) {
     arg = (arg || '').trim();
     switch (kind) {
+      case 'agent': {
+        if (!arg) return null;
+        if (!N || !N.runAgent) return L().aAgentApp;
+        if (!N.agentEnabled()) { setTimeout(showAgentGuide, 0); return null; }
+        var started = N.runAgent(arg, JSON.stringify({
+          provider: cfg.provider, key: cfg.key, base: cfg.base, name: name(),
+          model: cfg.model || DEFAULT_MODEL[cfg.provider],
+          lang: isSinhala(lastUserText) ? 'si' : cfg.lang
+        }));
+        if (!started) return L().aAgentBusy;
+        agentOn = true;
+        return f('aAgent', arg);
+      }
       case 'open_app':
         return openApp(arg) ? f('aOpen', arg) : f('aOpenFail', arg);
       case 'search':
@@ -348,6 +400,17 @@
       }
     }
     return null;
+  }
+
+  function showAgentGuide() {
+    var el = addMsg('bot', t('agentGuide'));
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'go';
+    b.textContent = L().openSettings;
+    b.onclick = function () { N.openAccessibilitySettings(); };
+    el.appendChild(b);
+    log.scrollTop = log.scrollHeight;
   }
 
   // --------------------------------------------------- built-in (offline) skills
@@ -416,6 +479,8 @@
       '[[alarm:HH:MM]] set an alarm, 24-hour time',
       '[[timer:seconds]] start a countdown timer',
       '[[torch:on]] or [[torch:off]] switch the flashlight',
+      '[[agent:task]] hand over a task that needs operating inside apps step by step — tapping, typing, navigating, sending a message, changing a setting, playing a specific video. Write the task after the colon as one clear, complete English instruction including every detail the user gave (exact names and exact message text, kept in their original language). Use the simpler tags above whenever one of them is enough. Use at most one agent tag per reply, and when you use it just say briefly that you are on it — the result is reported separately when the task ends.',
+      'The agent will not make payments or purchases, enter passwords, or delete data; if the user asks for those, say plainly that they must do that part themselves.',
       'Use a tag only when the user actually asked for that action, and still say a brief confirmation in words. Never mention the tags themselves.',
       'Be honest: if you do not know something or cannot do it, say so plainly.'
     ].join('\n');
@@ -500,6 +565,7 @@
 
   function handleUser(text) {
     if (busy || !text) return;
+    lastUserText = text;
     stopSpeaking();
     addMsg('user', text);
     input.value = '';
@@ -535,6 +601,7 @@
 
   // ----------------------------------------------------------------- events
   $('orb').onclick = $('micBtn').onclick = function () {
+    if (agentOn && state === 'idle') { N.stopAgent(); return; }
     if (state === 'listening') stopListening();
     else if (state === 'speaking') { stopSpeaking(); setState('idle'); listen(); }
     else if (state === 'idle') listen();
@@ -572,8 +639,19 @@
     $('sName').placeholder = name();
     $('sVoice').checked = cfg.voice;
     syncProviderFields();
+    syncAgentRow();
     sheet.hidden = false;
   };
+  function syncAgentRow() {
+    var can = !!(N && N.agentEnabled);
+    $('sAgentWrap').style.display = can ? '' : 'none';
+    if (!can) return;
+    var on = N.agentEnabled();
+    $('sAgent').textContent = on ? L().phoneOn : L().phoneEnable;
+    $('sAgent').classList.toggle('on', on);
+  }
+  $('sAgent').onclick = function () { N.openAccessibilitySettings(); };
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && !sheet.hidden) syncAgentRow(); });
   $('sProvider').onchange = syncProviderFields;
   sheet.addEventListener('click', function (e) {
     if (e.target.closest('[data-close]')) sheet.hidden = true;

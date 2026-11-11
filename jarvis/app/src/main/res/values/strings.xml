@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">J.A.R.V.I.S</string>
+    <string name="agent_label">J.A.R.V.I.S phone control</string>
+    <string name="agent_summary">ඔබ දෙන වැඩ J.A.R.V.I.S ට දුරකථනය පාවිච්චි කරලා කරන්න ඉඩ දෙයි.</string>
+    <string name="agent_description">මෙය සක්‍රිය කළ විට, ඔබ වැඩක් දුන් වෙලාවට පමණක් J.A.R.V.I.S තිරයේ ඇති දේ කියවා, ඔබ වෙනුවට tap කිරීම, type කිරීම සහ scroll කිරීම කරයි. වැඩක් කරන අතරතුර තිරයේ ඇති text ඔබ තෝරාගත් AI සේවාවට යවනු ලැබේ. Password ක්ෂේත්‍ර කියවන්නේ හෝ පුරවන්නේ නැත.\n\nWhen enabled, J.A.R.V.I.S reads what is on screen and taps, types and scrolls for you — only while it is carrying out a task you gave it. During a task the on-screen text is sent to the AI provider you chose. Password fields are never read or filled.</string>
 </resources>

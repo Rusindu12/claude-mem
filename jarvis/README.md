@@ -11,6 +11,10 @@ A voice assistant app for Android that understands and speaks Sinhala and Englis
 - AI answers through Google Gemini or any OpenAI-compatible API (add your own key in ⚙ Settings)
 - Works without a key for: time, date, battery, torch, opening apps, web search, YouTube search
 - With AI connected it can also set alarms and timers, open Maps, and open the dialler
+- **Phone control**: give it a task ("open YouTube and play …", "send … on WhatsApp") and it operates the
+  apps itself — reading the screen, tapping, typing and scrolling — through an Android accessibility service
+  (`AgentService.java`). A floating STOP button is shown while it works; it is limited to 25 steps per task,
+  never touches password fields, and is instructed not to pay, buy or delete anything
 - Hands-free mode: keeps listening after each reply
 - Remembers the recent conversation on the phone
 
@@ -35,4 +39,7 @@ gradle assembleDebug
 1. Install the APK (allow "install unknown apps" when asked).
 2. Allow the microphone when prompted.
 3. For Sinhala speech: Settings → System → Languages → Text-to-speech → Google → install **සිංහල** voice data.
-4. Tap ⚙ in the app and paste an API key (a free Gemini key: https://aistudio.google.com/apikey).
+4. For phone control: Settings → Accessibility → **J.A.R.V.I.S phone control** → On. On Android 13+ a sideloaded
+   app is blocked at first: open Settings → Apps → J.A.R.V.I.S → ⋮ → **Allow restricted settings**, then retry.
+   While a task runs, the text on screen is sent to the AI provider you configured.
+5. Tap ⚙ in the app and paste an API key (a free Gemini key: https://aistudio.google.com/apikey).

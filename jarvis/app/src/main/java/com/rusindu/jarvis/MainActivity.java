@@ -6,13 +6,13 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Bundle;
 import android.provider.AlarmClock;
+import android.provider.Settings;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -27,7 +27,6 @@ import android.webkit.WebViewClient;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 
 /**
@@ -39,6 +38,8 @@ public class MainActivity extends Activity {
 
     private static final int REQ_MIC = 1001;
 
+    private static volatile MainActivity instance;
+
     private WebView webView;
     private SpeechRecognizer recognizer;
     private TextToSpeech tts;
@@ -49,6 +50,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        instance = this;
 
         webView = new WebView(this);
         webView.setBackgroundColor(0xFF03080F);
@@ -107,6 +109,24 @@ public class MainActivity extends Activity {
                     + JSONObject.quote(type) + "," + JSONObject.quote(data == null ? "" : data) + ")";
             webView.evaluateJavascript(js, null);
         });
+    }
+
+    /** Forward an event from the agent service to the web UI, if the activity is alive. */
+    static void post(String type, String data) {
+        MainActivity a = instance;
+        if (a != null) {
+            a.emit(type, data);
+        }
+    }
+
+    /** Speak on behalf of the agent service, picking the voice from the script of the text. */
+    static void speakOut(final String text) {
+        final MainActivity a = instance;
+        if (a == null || text == null || text.isEmpty()) {
+            return;
+        }
+        final String lang = text.matches("(?s).*[\\u0D80-\\u0DFF].*") ? "si-LK" : "en-GB";
+        a.runOnUiThread(() -> a.say(text, lang));
     }
 
     private boolean openExternal(String url) {
@@ -314,45 +334,38 @@ public class MainActivity extends Activity {
         /** Launch an installed app whose label matches the given name. */
         @JavascriptInterface
         public boolean openApp(String name) {
-            if (name == null) {
-                return false;
-            }
-            String want = name.trim().toLowerCase(Locale.ROOT);
-            if (want.isEmpty()) {
-                return false;
-            }
+            return Apps.launch(MainActivity.this, name);
+        }
+
+        @JavascriptInterface
+        public boolean agentEnabled() {
+            return AgentService.instance != null;
+        }
+
+        @JavascriptInterface
+        public boolean openAccessibilitySettings() {
             try {
-                PackageManager pm = getPackageManager();
-                Intent main = new Intent(Intent.ACTION_MAIN);
-                main.addCategory(Intent.CATEGORY_LAUNCHER);
-                List<ResolveInfo> apps = pm.queryIntentActivities(main, 0);
-                String exact = null;
-                String partial = null;
-                for (ResolveInfo ri : apps) {
-                    String label = String.valueOf(ri.loadLabel(pm)).toLowerCase(Locale.ROOT);
-                    String pkg = ri.activityInfo.packageName;
-                    if (label.equals(want)) {
-                        exact = pkg;
-                        break;
-                    }
-                    if (partial == null && (label.contains(want) || want.contains(label)
-                            || pkg.toLowerCase(Locale.ROOT).contains(want.replace(" ", "")))) {
-                        partial = pkg;
-                    }
-                }
-                String pkg = exact != null ? exact : partial;
-                if (pkg == null) {
-                    return false;
-                }
-                Intent launch = pm.getLaunchIntentForPackage(pkg);
-                if (launch == null) {
-                    return false;
-                }
-                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(launch);
+                Intent i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(i);
                 return true;
             } catch (Exception e) {
                 return false;
+            }
+        }
+
+        /** Start a multi-step task. Returns false when phone control is off or already busy. */
+        @JavascriptInterface
+        public boolean runAgent(String task, String configJson) {
+            AgentService svc = AgentService.instance;
+            return svc != null && svc.start(task, configJson);
+        }
+
+        @JavascriptInterface
+        public void stopAgent() {
+            AgentService svc = AgentService.instance;
+            if (svc != null) {
+                svc.cancel();
             }
         }
 
@@ -436,6 +449,9 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (instance == this) {
+            instance = null;
+        }
         if (recognizer != null) {
             recognizer.destroy();
             recognizer = null;

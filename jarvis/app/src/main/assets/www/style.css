@@ -129,6 +129,10 @@ footer { padding: 0 12px 12px; }
 .sheet label.row { display: flex; align-items: center; justify-content: space-between; }
 .sheet label.row > span { margin: 0; }
 .sheet input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--cyan); }
+.agent-box { margin-top: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; font-size: 13px; color: var(--muted); }
+.agent-box .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text); }
+.agent-box .chip { height: 36px; }
+.msg .go { display: block; margin-top: 10px; padding: 9px 14px; border-radius: 10px; background: var(--cyan); color: var(--bg); font-weight: 700; font-size: 13px; }
 .sheet-actions { display: flex; gap: 10px; margin-top: 18px; }
 .btn { flex: 1; height: 46px; border-radius: 12px; background: var(--cyan); color: var(--bg); font-weight: 700; font-size: 14px; }
 .btn.ghost { background: none; border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
