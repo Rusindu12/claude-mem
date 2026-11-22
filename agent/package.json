@@ -1,0 +1,34 @@
+{
+  "name": "axiom-agent",
+  "version": "0.1.0",
+  "description": "Axiom — First-principles autonomous AI software-architect agent (Phase 1 MVP)",
+  "type": "module",
+  "scripts": {
+    "dev": "node --disable-warning=ExperimentalWarning --experimental-strip-types src/cli/dev.ts",
+    "prebuild": "node scripts/sync-vendor.mjs",
+    "build": "vite build && tsc --noEmit",
+    "start": "node --disable-warning=ExperimentalWarning --experimental-strip-types src/server/index.ts",
+    "test": "node --disable-warning=ExperimentalWarning --experimental-strip-types --test tests/*.test.ts",
+    "eval": "node --disable-warning=ExperimentalWarning --experimental-strip-types src/evals/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "apk:build": "bash scripts/build-apk.sh"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "lucide-react": "^0.487.0",
+    "parse5": "^8.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+android/
+downloads/
+public/vendor/
+.env
+.env.local
+data/
+workspaces/
+*.db
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.log

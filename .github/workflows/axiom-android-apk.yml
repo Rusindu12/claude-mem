@@ -1,0 +1,75 @@
+name: Build Axiom Android APK
+
+on:
+  push:
+    branches: ['arena/**']
+    paths:
+      - 'agent/**'
+      - '.github/workflows/axiom-android-apk.yml'
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: 'Optional hosted Axiom server URL (leave empty for standalone on-device mode)'
+        required: false
+        default: ''
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        run: |
+          SDK_DIR="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          mkdir -p "$SDK_DIR/licenses"
+          yes | "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+
+      - name: Install dependencies & build web client
+        working-directory: agent
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Configure Capacitor & build Android APK
+        working-directory: agent
+        env:
+          SERVER_URL: ${{ inputs.server_url }}
+        run: |
+          npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+          if [ -n "$SERVER_URL" ]; then
+            node -e "
+              const fs = require('fs');
+              const cfg = JSON.parse(fs.readFileSync('capacitor.config.json', 'utf8'));
+              cfg.server = { url: process.env.SERVER_URL, cleartext: true };
+              fs.writeFileSync('capacitor.config.json', JSON.stringify(cfg, null, 2));
+            "
+          fi
+          npx cap add android
+          npx cap sync android
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+          ls -lh app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload Axiom Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: axiom-studio-debug-apk
+          path: agent/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30

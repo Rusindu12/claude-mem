@@ -1,0 +1,24 @@
+{
+  "plugins": [
+    {
+      "id": "github-mcp-example",
+      "name": "GitHub MCP (Example)",
+      "enabled": false,
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "notes": "Enable to mount external GitHub MCP tools without modifying core."
+    },
+    {
+      "id": "slack-mcp-example",
+      "name": "Slack / Workspace MCP (Example)",
+      "enabled": false,
+      "transport": "http",
+      "url": "http://localhost:8080/mcp",
+      "notes": "HTTP JSON-RPC MCP endpoint example."
+    }
+  ]
+}

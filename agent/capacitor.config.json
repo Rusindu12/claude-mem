@@ -1,0 +1,9 @@
+{
+  "appId": "ai.axiom.studio",
+  "appName": "Axiom Studio",
+  "webDir": "dist/client",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}
