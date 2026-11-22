@@ -133,7 +133,13 @@ export function Sidebar({
           </div>
           {downloadsStatus.apk.ready ? (
             <a
-              href={apiUrl('/api/downloads/apk')}
+              href={
+                downloadsStatus.apk.url?.startsWith('http')
+                  ? downloadsStatus.apk.url
+                  : apiUrl('/api/downloads/apk')
+              }
+              target="_blank"
+              rel="noreferrer"
               download="axiom-studio.apk"
               className="btn btn-primary"
               style={{ textDecoration: 'none', justifyContent: 'space-between', fontSize: 12 }}

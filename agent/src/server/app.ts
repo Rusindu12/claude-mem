@@ -1,8 +1,12 @@
+import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import express from 'express';
+
+const execFileAsync = promisify(execFile);
 import { toProviderStatus, type AxiomConfig } from '../llm/config.ts';
 import type { AxiomOrchestrator } from '../core/orchestrator.ts';
 import { runEvalSuite } from '../evals/suite.ts';
@@ -130,40 +134,62 @@ export function createServerApp(params: {
     if (Date.now() - cachedReleaseApk.checkedAt < 60_000) {
       return cachedReleaseApk.asset;
     }
+    const releaseApiUrl =
+      'https://api.github.com/repos/Rusindu12/claude-mem/releases/tags/axiom-studio-apk';
+    interface ReleasePayload {
+      assets?: Array<{
+        name: string;
+        size: number;
+        updated_at: string;
+        browser_download_url: string;
+      }>;
+    }
+    let rel: ReleasePayload | null = null;
+
     try {
-      const resp = await fetch(
-        'https://api.github.com/repos/Rusindu12/claude-mem/releases/tags/axiom-studio-apk',
-        {
-          headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Axiom-Studio' },
-          signal: AbortSignal.timeout(2500),
-        },
-      );
+      const resp = await fetch(releaseApiUrl, {
+        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Axiom-Studio' },
+        signal: AbortSignal.timeout(2500),
+      });
       if (resp.ok) {
-        const rel = (await resp.json()) as {
-          assets?: Array<{
-            name: string;
-            size: number;
-            updated_at: string;
-            browser_download_url: string;
-          }>;
-        };
-        const apkAsset = rel.assets?.find((a) => a.name.endsWith('.apk'));
-        if (apkAsset) {
-          cachedReleaseApk = {
-            checkedAt: Date.now(),
-            asset: {
-              name: apkAsset.name,
-              size: apkAsset.size,
-              updatedAt: apkAsset.updated_at,
-              url: apkAsset.browser_download_url,
-            },
-          };
-          return cachedReleaseApk.asset;
-        }
+        rel = (await resp.json()) as ReleasePayload;
       }
     } catch {
-      // Ignore offline/network errors
+      try {
+        const { stdout } = await execFileAsync(
+          'curl',
+          [
+            '-fsSL',
+            '-m',
+            '3',
+            '-H',
+            'Accept: application/vnd.github+json',
+            '-H',
+            'User-Agent: Axiom-Studio',
+            releaseApiUrl,
+          ],
+          { timeout: 3500 },
+        );
+        rel = JSON.parse(stdout) as ReleasePayload;
+      } catch {
+        rel = null;
+      }
     }
+
+    const apkAsset = rel?.assets?.find((a) => a.name.endsWith('.apk'));
+    if (apkAsset) {
+      cachedReleaseApk = {
+        checkedAt: Date.now(),
+        asset: {
+          name: apkAsset.name,
+          size: apkAsset.size,
+          updatedAt: apkAsset.updated_at,
+          url: apkAsset.browser_download_url,
+        },
+      };
+      return cachedReleaseApk.asset;
+    }
+
     cachedReleaseApk = { checkedAt: Date.now(), asset: undefined };
     return undefined;
   }
