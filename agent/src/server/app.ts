@@ -119,8 +119,56 @@ export function createServerApp(params: {
 
   const downloadsDir = path.resolve(config.dataDir, '..', 'downloads');
   const apkFilePath = path.join(downloadsDir, 'axiom-studio-debug.apk');
+  let cachedReleaseApk: {
+    checkedAt: number;
+    asset?: { name: string; size: number; updatedAt: string; url: string };
+  } = { checkedAt: 0 };
 
-  app.get('/api/downloads/status', (_req, res) => {
+  async function resolveReleaseApk(): Promise<
+    { name: string; size: number; updatedAt: string; url: string } | undefined
+  > {
+    if (Date.now() - cachedReleaseApk.checkedAt < 60_000) {
+      return cachedReleaseApk.asset;
+    }
+    try {
+      const resp = await fetch(
+        'https://api.github.com/repos/Rusindu12/claude-mem/releases/tags/axiom-studio-apk',
+        {
+          headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Axiom-Studio' },
+          signal: AbortSignal.timeout(2500),
+        },
+      );
+      if (resp.ok) {
+        const rel = (await resp.json()) as {
+          assets?: Array<{
+            name: string;
+            size: number;
+            updated_at: string;
+            browser_download_url: string;
+          }>;
+        };
+        const apkAsset = rel.assets?.find((a) => a.name.endsWith('.apk'));
+        if (apkAsset) {
+          cachedReleaseApk = {
+            checkedAt: Date.now(),
+            asset: {
+              name: apkAsset.name,
+              size: apkAsset.size,
+              updatedAt: apkAsset.updated_at,
+              url: apkAsset.browser_download_url,
+            },
+          };
+          return cachedReleaseApk.asset;
+        }
+      }
+    } catch {
+      // Ignore offline/network errors
+    }
+    cachedReleaseApk = { checkedAt: Date.now(), asset: undefined };
+    return undefined;
+  }
+
+  app.get('/api/downloads/status', async (_req, res) => {
     const apkExists = fs.existsSync(apkFilePath);
     let apkInfo: {
       ready: boolean;
@@ -129,19 +177,30 @@ export function createServerApp(params: {
       sha256?: string;
       updatedAt?: string;
       url?: string;
-    } = { ready: false, filename: 'axiom-studio-debug.apk' };
+    } = { ready: false, filename: 'axiom-studio.apk' };
 
     if (apkExists) {
       const stat = fs.statSync(apkFilePath);
       const hash = crypto.createHash('sha256').update(fs.readFileSync(apkFilePath)).digest('hex');
       apkInfo = {
         ready: true,
-        filename: 'axiom-studio-debug.apk',
+        filename: 'axiom-studio.apk',
         sizeBytes: stat.size,
         sha256: hash,
         updatedAt: stat.mtime.toISOString(),
         url: '/api/downloads/apk',
       };
+    } else {
+      const releaseAsset = await resolveReleaseApk();
+      if (releaseAsset) {
+        apkInfo = {
+          ready: true,
+          filename: releaseAsset.name,
+          sizeBytes: releaseAsset.size,
+          updatedAt: releaseAsset.updatedAt,
+          url: releaseAsset.url,
+        };
+      }
     }
 
     const webReady = Boolean(params.clientDistDir && fs.existsSync(params.clientDistDir));
@@ -156,16 +215,21 @@ export function createServerApp(params: {
     });
   });
 
-  app.get('/api/downloads/apk', (_req, res) => {
-    if (!fs.existsSync(apkFilePath)) {
-      res.status(404).json({
-        error: 'APK artifact not built yet. Trigger .github/workflows/axiom-android-apk.yml or run npm run apk:build with Android SDK.',
-      });
+  app.get('/api/downloads/apk', async (_req, res) => {
+    if (fs.existsSync(apkFilePath)) {
+      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+      res.setHeader('Content-Disposition', 'attachment; filename="axiom-studio.apk"');
+      fs.createReadStream(apkFilePath).pipe(res);
       return;
     }
-    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-    res.setHeader('Content-Disposition', 'attachment; filename="axiom-studio.apk"');
-    fs.createReadStream(apkFilePath).pipe(res);
+    const releaseAsset = await resolveReleaseApk();
+    if (releaseAsset) {
+      res.redirect(302, releaseAsset.url);
+      return;
+    }
+    res.status(404).json({
+      error: 'APK artifact not built yet. Trigger .github/workflows/axiom-android-apk.yml or run npm run apk:build with Android SDK.',
+    });
   });
 
   app.get('/api/downloads/webapp', (_req, res) => {

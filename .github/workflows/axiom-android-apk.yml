@@ -13,6 +13,9 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-24.04
@@ -67,11 +70,26 @@ jobs:
           cd android
           chmod +x ./gradlew
           ./gradlew assembleDebug --no-daemon
-          ls -lh app/build/outputs/apk/debug/app-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../axiom-studio.apk
+          ls -lh ../axiom-studio.apk
 
       - name: Upload Axiom Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: axiom-studio-debug-apk
-          path: agent/android/app/build/outputs/apk/debug/app-debug.apk
+          path: agent/axiom-studio.apk
           retention-days: 30
+
+      - name: Publish downloadable APK (pre-release)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view axiom-studio-apk >/dev/null 2>&1; then
+            gh release upload axiom-studio-apk agent/axiom-studio.apk --clobber
+          else
+            gh release create axiom-studio-apk agent/axiom-studio.apk \
+              --target "${{ github.sha }}" \
+              --prerelease \
+              --title "Axiom Studio Android APK" \
+              --notes "Axiom Studio Capacitor Android APK (runs standalone on-device with Axiom Native AI, or connects to an Axiom server)."
+          fi
