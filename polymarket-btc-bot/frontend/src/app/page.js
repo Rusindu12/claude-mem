@@ -19,6 +19,7 @@ import CandlestickChart from '../components/CandlestickChart';
 import ModelVsMarketChart from '../components/ModelVsMarketChart';
 import LandingCurveChart from '../components/LandingCurveChart';
 import SafetyModal from '../components/SafetyModal';
+import RiskAndReplayBar from '../components/RiskAndReplayBar';
 
 function formatCountdown(sec) {
   const s = Math.max(0, Math.floor(sec || 0));
@@ -177,6 +178,11 @@ export default function DashboardPage() {
 
       {/* MAIN GRID */}
       <main className="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-4 space-y-4">
+        <RiskAndReplayBar
+          risk={risk}
+          analytics={analytics}
+          timeLeftSec={win?.timeLeftSec ?? 300}
+        />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* LEFT COLUMN: Balance/PnL, Metrics, Signal Stack, Live Trade Log */}
           <section className="lg:col-span-3 space-y-4">
