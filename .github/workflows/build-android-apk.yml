@@ -2,14 +2,13 @@ name: Build Polymarket BTC Bot Android APK
 
 on:
   workflow_dispatch:
-    inputs:
-      dashboard_url:
-        description: 'Default Dashboard URL baked into the APK (can also be changed in-app)'
-        required: false
-        default: 'http://10.0.2.2:3000'
   push:
     paths:
       - 'polymarket-btc-bot/android-webview/**'
+      - '.github/workflows/build-android-apk.yml'
+
+permissions:
+  contents: write
 
 jobs:
   build-apk:
@@ -33,8 +32,21 @@ jobs:
         working-directory: polymarket-btc-bot/android-webview
         run: gradle assembleDebug
 
+      - name: Rename APK
+        run: cp polymarket-btc-bot/android-webview/app/build/outputs/apk/debug/app-debug.apk polymarket-btc-bot.apk
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: polymarket-btc-bot-apk
-          path: polymarket-btc-bot/android-webview/app/build/outputs/apk/debug/app-debug.apk
+          path: polymarket-btc-bot.apk
+
+      - name: Publish Direct Download Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete v1.0.0-apk -y || true
+          gh release create v1.0.0-apk polymarket-btc-bot.apk \
+            --target "${{ github.sha }}" \
+            --title "Polymarket BTC Bot APK (v1.0.0)" \
+            --notes "Direct Android APK download for Polymarket 5m BTC Up/Down Bot & Dashboard."
