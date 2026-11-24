@@ -1,0 +1,12 @@
+# Generated build outputs and downloadable release files
+/build/
+/CryptoAI-PRO.apk
+/CryptoAI-PRO.apk.idsig
+
+# Local-only Android build tools and signing credentials
+/tools/aapt2
+/tools/android.jar
+/tools/apksigner.jar
+/tools/d8.jar
+/tools/ecj-*.jar
+/tools/*.keystore

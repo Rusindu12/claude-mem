@@ -1,0 +1,3 @@
+-keep class lk.cryptoai.pro.MainActivity { *; }
+-keep class lk.cryptoai.pro.MainActivity$AndroidBridge { *; }
+-keepattributes *
