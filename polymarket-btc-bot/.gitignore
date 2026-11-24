@@ -1,0 +1,9 @@
+node_modules/
+.venv/
+.next/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+android-webview/.gradle/
+android-webview/app/build/

@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: polymarket_bot
+      POSTGRES_USER: bot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bot_dev_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  engine:
+    build: ./engine
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+      - engine
+    environment:
+      PORT: 4000
+      ENGINE_URL: http://engine:8001
+      DATABASE_URL: postgres://bot:${POSTGRES_PASSWORD:-bot_dev_password}@postgres:5432/polymarket_bot
+      REDIS_URL: redis://redis:6379
+      DRY_RUN: ${DRY_RUN:-true}
+      LIVE_TRADING: ${LIVE_TRADING:-false}
+      ENABLE_LIVE_MARKET_FETCH: ${ENABLE_LIVE_MARKET_FETCH:-false}
+      ENCRYPTION_MASTER_KEY: ${ENCRYPTION_MASTER_KEY:-change-me-32-byte-master-key}
+      JWT_SECRET: ${JWT_SECRET:-change-me-jwt-secret}
+      DASHBOARD_USER: ${DASHBOARD_USER:-trader}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-paper-mode-2026}
+      DASHBOARD_TOTP_SECRET: ${DASHBOARD_TOTP_SECRET:-JBSWY3DPEHPK3PXP}
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:4000
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
